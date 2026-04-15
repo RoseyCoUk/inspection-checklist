@@ -1,0 +1,193 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap');
+
+:root {
+  --brown: #6B3A2A;
+  --brown-light: #8B5E3C;
+  --gold: #B8962E;
+  --gold-light: #D4B44A;
+  --beige: #C9BAA8;
+  --beige-light: #E8DFD4;
+  --beige-pale: #F5F1EC;
+  --bg: #f0ebe5;
+  --white: #FFFFFF;
+  --text: #3A2A1A;
+  --text-light: #6B5D4F;
+  --green: #4a7a3a;
+  --red: #a83232;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+.shell {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 24px 20px 48px;
+}
+
+.card {
+  background: var(--white);
+  border: 1px solid var(--beige);
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 2px 12px rgba(107,58,42,0.06);
+}
+
+h1, h2, h3 {
+  font-family: 'Cormorant Garamond', serif;
+  color: var(--brown);
+  font-weight: 600;
+  letter-spacing: 1px;
+  margin: 0 0 12px;
+}
+h1 { font-size: 32px; letter-spacing: 3px; }
+h2 { font-size: 22px; letter-spacing: 2px; }
+
+.hdr {
+  border-bottom: 1.5px solid var(--gold);
+  padding-bottom: 10px;
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.hdr .sub {
+  font-size: 12px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-light);
+}
+
+.muted { color: var(--text-light); font-size: 14px; }
+
+.input, textarea.input {
+  width: 100%;
+  padding: 12px 14px;
+  font-size: 16px;
+  font-family: inherit;
+  border: 1px solid var(--beige);
+  border-radius: 6px;
+  background: var(--beige-pale);
+  color: var(--text);
+  outline: none;
+}
+.input:focus, textarea.input:focus { border-color: var(--gold); background: var(--white); }
+
+.btn {
+  display: inline-block;
+  width: 100%;
+  padding: 14px 20px;
+  font-size: 16px;
+  font-family: inherit;
+  font-weight: 500;
+  letter-spacing: 1px;
+  border: 1px solid var(--brown);
+  background: var(--brown);
+  color: var(--white);
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: center;
+  text-decoration: none;
+  transition: background .15s;
+}
+.btn:hover { background: var(--brown-light); }
+.btn.ghost {
+  background: transparent;
+  color: var(--brown);
+}
+.btn.ghost:hover { background: var(--beige-pale); }
+.btn.good {
+  background: var(--green);
+  border-color: var(--green);
+}
+.btn.good:hover { background: #5d8f4a; }
+.btn.bad {
+  background: var(--red);
+  border-color: var(--red);
+}
+.btn.bad:hover { background: #b94646; }
+
+.room-tile {
+  display: block;
+  padding: 16px 18px;
+  background: var(--white);
+  border: 1px solid var(--beige);
+  border-left: 3px solid var(--gold);
+  border-radius: 6px;
+  color: var(--text);
+  text-decoration: none;
+  font-size: 16px;
+  transition: all .15s;
+}
+.room-tile:hover { border-left-color: var(--brown); background: var(--beige-pale); }
+.room-tile .num {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 22px;
+  color: var(--brown);
+  font-weight: 600;
+}
+
+.progress {
+  height: 6px;
+  background: var(--beige-light);
+  border-radius: 3px;
+  overflow: hidden;
+  margin: 12px 0 20px;
+}
+.progress > span {
+  display: block;
+  height: 100%;
+  background: var(--gold);
+  transition: width .2s;
+}
+
+.item-label {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 26px;
+  color: var(--brown);
+  font-weight: 600;
+  margin: 24px 0 8px;
+  text-align: center;
+}
+
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  border-radius: 3px;
+  font-weight: 600;
+}
+.badge.good { background: #e3efd9; color: var(--green); }
+.badge.bad { background: #f5d9d9; color: var(--red); }
+
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+thead th {
+  text-align: left;
+  padding: 10px 8px;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-light);
+  border-bottom: 1.5px solid var(--gold);
+  font-weight: 500;
+}
+tbody td {
+  padding: 12px 8px;
+  border-bottom: 1px solid var(--beige-light);
+}
+tbody tr:hover { background: var(--beige-pale); }
+
+a { color: var(--brown); }
+a:hover { color: var(--gold); }
+
+.stack { display: grid; gap: 12px; }
+.row-between { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
