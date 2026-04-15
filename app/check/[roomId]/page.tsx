@@ -149,8 +149,8 @@ export default function CheckPage() {
         {items.map((it) => {
           const a = answers[it.id];
           const status = a?.status;
-          const bg = status === "good" ? "#e3efd9" : status === "bad" ? "#f5d9d9" : "var(--white)";
-          const borderColor = status === "good" ? "var(--green)" : status === "bad" ? "var(--red)" : "var(--gold)";
+          const bg = "#FFFFFF";
+          const borderColor = status === "good" ? "#4a7a3a" : status === "bad" ? "#a83232" : "#B8962E";
           return (
             <button
               key={it.id}
@@ -162,14 +162,15 @@ export default function CheckPage() {
                 gap: 12,
                 padding: "14px 16px",
                 background: bg,
-                border: "1px solid var(--beige)",
-                borderLeft: `3px solid ${borderColor}`,
+                border: "1px solid #C9BAA8",
+                borderLeft: `4px solid ${borderColor}`,
                 borderRadius: 6,
                 cursor: "pointer",
                 textAlign: "start",
                 fontFamily: "inherit",
                 fontSize: 16,
-                color: "var(--text)",
+                color: "#3A2A1A",
+                fontWeight: 500,
                 width: "100%",
               }}
             >
@@ -183,8 +184,8 @@ export default function CheckPage() {
               }}>
                 {status === "good" ? "✓" : status === "bad" ? "!" : ""}
               </span>
-              <span style={{ flex: 1 }}>{translateItem(it.label, lang)}</span>
-              <span className="muted" style={{ fontSize: 12 }}>
+              <span style={{ flex: 1, color: "#3A2A1A" }}>{translateItem(it.label, lang)}</span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: status === "good" ? "#4a7a3a" : status === "bad" ? "#a83232" : "#6B5D4F" }}>
                 {status === "good" ? t("good") : status === "bad" ? t("issue") : ""}
               </span>
             </button>
