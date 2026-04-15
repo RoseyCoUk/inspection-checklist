@@ -96,7 +96,7 @@ export default function CheckPage() {
 
   function saveIssue() {
     if (!modalItem) return;
-    if (!draftNote.trim() || !draftPhoto) return;
+    if (!draftNote.trim()) return;
     setAnswers((a) => ({ ...a, [modalItem.id]: { status: "bad", note: draftNote, photo: draftPhoto } }));
     closeModal();
   }
@@ -239,7 +239,6 @@ export default function CheckPage() {
 
       {modalItem && (
         <div
-          onClick={closeModal}
           style={{
             position: "fixed", inset: 0, background: "rgba(58,42,26,0.5)",
             display: "flex", alignItems: "center", justifyContent: "center",
@@ -247,7 +246,6 @@ export default function CheckPage() {
           }}
         >
           <div
-            onClick={(e) => e.stopPropagation()}
             style={{
               background: "var(--white)", borderRadius: 10, padding: 24,
               maxWidth: 420, width: "100%", border: "1px solid var(--beige)",
@@ -294,8 +292,8 @@ export default function CheckPage() {
                   type="button"
                   onClick={saveIssue}
                   className="btn"
-                  disabled={!draftNote.trim() || !draftPhoto}
-                  style={{ opacity: (!draftNote.trim() || !draftPhoto) ? 0.5 : 1 }}
+                  disabled={!draftNote.trim()}
+                  style={{ opacity: !draftNote.trim() ? 0.5 : 1 }}
                 >
                   {t("save")}
                 </button>
