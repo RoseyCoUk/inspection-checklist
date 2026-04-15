@@ -94,6 +94,12 @@ export default function CheckPage() {
     closeModal();
   }
 
+  function clearAnswer() {
+    if (!modalItem) return;
+    setAnswers((a) => ({ ...a, [modalItem.id]: { status: null, note: "", photo: null } }));
+    closeModal();
+  }
+
   function saveIssue() {
     if (!modalItem) return;
     setAnswers((a) => ({ ...a, [modalItem.id]: { status: "bad", note: draftNote, photo: draftPhoto } }));
@@ -259,6 +265,9 @@ export default function CheckPage() {
                 <div className="stack">
                   <button type="button" onClick={markGood} className="btn good">✓ {t("good")}</button>
                   <button type="button" onClick={() => setModalMode("issue")} className="btn bad">! {t("issue")}</button>
+                  {answers[modalItem.id]?.status !== null && (
+                    <button type="button" onClick={clearAnswer} className="btn ghost">↺ Uncheck</button>
+                  )}
                   <button type="button" onClick={closeModal} className="btn ghost">{t("cancel")}</button>
                 </div>
               </>
@@ -290,6 +299,9 @@ export default function CheckPage() {
                 <button type="button" onClick={saveIssue} className="btn">
                   {t("save")}
                 </button>
+                {answers[modalItem.id]?.status !== null && (
+                  <button type="button" onClick={clearAnswer} className="btn ghost">↺ Uncheck</button>
+                )}
                 <button type="button" onClick={closeModal} className="btn ghost">{t("cancel")}</button>
               </div>
             )}
