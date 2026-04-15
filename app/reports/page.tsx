@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { supabase, PHOTO_BUCKET } from "@/lib/supabase";
 import { useT } from "@/lib/i18n";
@@ -18,18 +18,65 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [exporting, setExporting] = useState<null | "csv" | "pdf">(null);
+  const [filterRoom, setFilterRoom] = useState("");
+  const [filterWorker, setFilterWorker] = useState("");
+  const [filterStatus, setFilterStatus] = useState<"all" | "clean" | "issues">("all");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [sortKey, setSortKey] = useState<"date" | "room" | "worker" | "issues">("date");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const t = useT();
+
+  const rooms = useMemo(() => Array.from(new Set(rows.map((r) => r.rooms?.number).filter(Boolean) as string[])).sort(), [rows]);
+  const workers = useMemo(() => Array.from(new Set(rows.map((r) => r.worker_name).filter(Boolean))).sort(), [rows]);
+
+  const filtered = useMemo(() => {
+    let out = rows.filter((r) => {
+      if (filterRoom && r.rooms?.number !== filterRoom) return false;
+      if (filterWorker && r.worker_name !== filterWorker) return false;
+      if (filterStatus === "clean" && r.bad_count > 0) return false;
+      if (filterStatus === "issues" && r.bad_count === 0) return false;
+      if (dateFrom && new Date(r.created_at) < new Date(dateFrom)) return false;
+      if (dateTo && new Date(r.created_at) > new Date(dateTo + "T23:59:59")) return false;
+      return true;
+    });
+    const dir = sortDir === "asc" ? 1 : -1;
+    out = [...out].sort((a, b) => {
+      let av: number | string = 0, bv: number | string = 0;
+      if (sortKey === "date") { av = a.created_at; bv = b.created_at; }
+      else if (sortKey === "room") { av = a.rooms?.number ?? ""; bv = b.rooms?.number ?? ""; }
+      else if (sortKey === "worker") { av = a.worker_name; bv = b.worker_name; }
+      else if (sortKey === "issues") { av = a.bad_count; bv = b.bad_count; }
+      if (av < bv) return -1 * dir;
+      if (av > bv) return 1 * dir;
+      return 0;
+    });
+    return out;
+  }, [rows, filterRoom, filterWorker, filterStatus, dateFrom, dateTo, sortKey, sortDir]);
+
+  function toggleSort(key: typeof sortKey) {
+    if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setSortKey(key); setSortDir(key === "date" ? "desc" : "asc"); }
+  }
+
+  function clearFilters() {
+    setFilterRoom(""); setFilterWorker(""); setFilterStatus("all"); setDateFrom(""); setDateTo("");
+  }
 
   const photoPathsFor = (p: string | null) =>
     p ? p.split(/\r?\n/).map((s) => s.trim()).filter(Boolean) : [];
 
   async function fetchAllDetailed() {
+    const ids = filtered.map((r) => r.id);
+    if (ids.length === 0) return [];
     const { data, error } = await supabase
       .from("reports")
       .select("id, worker_name, created_at, rooms(number), report_items(id, status, note, photo_path, checklist_items(label))")
+      .in("id", ids)
       .order("created_at", { ascending: false });
     if (error) throw error;
-    return (data ?? []) as any[];
+    const order = new Map(ids.map((id, i) => [id, i]));
+    return ((data ?? []) as any[]).sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
   }
 
   async function exportAllCsv() {
@@ -108,35 +155,25 @@ export default function ReportsPage() {
 
       doc.setFont("helvetica", "bold");
       doc.setFontSize(18);
-      doc.text("All Inspection Reports", margin, y);
-      y += 22;
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(10);
-      doc.text(`Exported ${new Date().toLocaleString()} — ${reports.length} reports`, margin, y);
-      y += 20;
+      doc.text("Inspection Issues", margin, y);
+      y += 24;
 
       for (const r of reports) {
+        const bad = (r.report_items ?? []).filter((i: any) => i.status === "bad");
+        if (bad.length === 0) continue;
+
         if (!first) {
           doc.addPage();
           y = margin;
         }
         first = false;
 
-        const bad = (r.report_items ?? []).filter((i: any) => i.status === "bad");
-        const good = (r.report_items ?? []).filter((i: any) => i.status === "good");
-
         doc.setFont("helvetica", "bold");
         doc.setFontSize(16);
         doc.text(`Room ${r.rooms?.number ?? "?"}`, margin, y);
-        y += 20;
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(11);
-        doc.text(`Worker: ${r.worker_name}`, margin, y);
-        y += 14;
-        doc.text(`Date: ${new Date(r.created_at).toLocaleString()}`, margin, y);
-        y += 20;
+        y += 24;
 
-        if (bad.length > 0) {
+        {
           doc.setFont("helvetica", "bold");
           doc.setFontSize(13);
           ensureSpace(18);
@@ -176,29 +213,13 @@ export default function ReportsPage() {
             y += 4;
           }
         }
-
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(13);
-        ensureSpace(18);
-        doc.text(`Passed (${good.length})`, margin, y);
-        y += 16;
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(11);
-        if (good.length === 0) {
-          ensureSpace(14);
-          doc.text("None", margin, y);
-          y += 14;
-        } else {
-          for (const it of good) {
-            const lines = doc.splitTextToSize(`• ${it.checklist_items?.label ?? ""}`, pageW - margin * 2);
-            ensureSpace(lines.length * 14);
-            doc.text(lines, margin, y);
-            y += lines.length * 14;
-          }
-        }
       }
 
-      doc.save(`all-reports-${new Date().toISOString().slice(0, 10)}.pdf`);
+      if (first) {
+        alert("No issues in the filtered reports — nothing to export.");
+        return;
+      }
+      doc.save(`issues-${new Date().toISOString().slice(0, 10)}.pdf`);
     } catch (e: any) {
       alert(e.message ?? String(e));
     } finally {
@@ -236,33 +257,64 @@ export default function ReportsPage() {
       </div>
 
       {!loading && !err && rows.length > 0 && (
-        <div className="row-between" style={{ gap: 8, marginBottom: 12 }}>
-          <button className="btn ghost" onClick={exportAllCsv} disabled={exporting !== null}>
-            {exporting === "csv" ? "Exporting…" : "Export All (CSV)"}
-          </button>
-          <button className="btn ghost" onClick={exportAllPdf} disabled={exporting !== null}>
-            {exporting === "pdf" ? "Exporting…" : "Export All (PDF)"}
-          </button>
-        </div>
+        <>
+          <div className="card" style={{ marginBottom: 12, padding: 14 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <select className="input" value={filterRoom} onChange={(e) => setFilterRoom(e.target.value)}>
+                <option value="">All rooms</option>
+                {rooms.map((r) => <option key={r} value={r}>Room {r}</option>)}
+              </select>
+              <select className="input" value={filterWorker} onChange={(e) => setFilterWorker(e.target.value)}>
+                <option value="">All workers</option>
+                {workers.map((w) => <option key={w} value={w}>{w}</option>)}
+              </select>
+              <select className="input" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as any)}>
+                <option value="all">All statuses</option>
+                <option value="clean">Clean only</option>
+                <option value="issues">With issues</option>
+              </select>
+              <div style={{ display: "flex", gap: 4 }}>
+                <input className="input" type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} placeholder="From" />
+                <input className="input" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} placeholder="To" />
+              </div>
+            </div>
+            <div className="row-between" style={{ marginTop: 10 }}>
+              <span className="muted" style={{ fontSize: 13 }}>{filtered.length} of {rows.length}</span>
+              <button type="button" className="btn ghost" style={{ width: "auto", padding: "6px 12px", fontSize: 13 }} onClick={clearFilters}>Clear filters</button>
+            </div>
+          </div>
+          <div className="row-between" style={{ gap: 8, marginBottom: 12 }}>
+            <button className="btn ghost" onClick={exportAllCsv} disabled={exporting !== null || filtered.length === 0}>
+              {exporting === "csv" ? "Exporting…" : `Export ${filtered.length === rows.length ? "All" : "Filtered"} (CSV)`}
+            </button>
+            <button className="btn ghost" onClick={exportAllPdf} disabled={exporting !== null || filtered.length === 0}>
+              {exporting === "pdf" ? "Exporting…" : `Export ${filtered.length === rows.length ? "All" : "Filtered"} (PDF)`}
+            </button>
+          </div>
+        </>
       )}
 
       <div className="card">
         {loading && <p className="muted">{t("loading")}</p>}
         {err && <p style={{ color: "var(--red)" }}>Error: {err}</p>}
         {!loading && !err && rows.length === 0 && <p className="muted">{t("noReports")}</p>}
-        {rows.length > 0 && (
+        {rows.length > 0 && filtered.length === 0 && (
+          <p className="muted">No reports match the current filters.</p>
+        )}
+        {filtered.length > 0 && (
           <table>
             <thead>
               <tr>
-                <th>{t("date")}</th>
-                <th>{t("room")}</th>
-                <th>{t("worker")}</th>
-                <th>{t("issues")}</th>
+                {([["date", t("date")], ["room", t("room")], ["worker", t("worker")], ["issues", t("issues")]] as const).map(([k, label]) => (
+                  <th key={k} onClick={() => toggleSort(k)} style={{ cursor: "pointer", userSelect: "none" }}>
+                    {label}{sortKey === k ? (sortDir === "asc" ? " ▲" : " ▼") : ""}
+                  </th>
+                ))}
                 <th></th>
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => (
+              {filtered.map((r) => (
                 <tr key={r.id}>
                   <td>
                     <Link href={`/reports/${r.id}`}>

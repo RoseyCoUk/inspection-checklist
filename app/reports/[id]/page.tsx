@@ -92,14 +92,7 @@ export default function ReportDetail() {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(20);
     doc.text(`Room ${roomNum}`, margin, y);
-    y += 24;
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(11);
-    doc.text(`Worker: ${rep.worker_name}`, margin, y);
-    y += 16;
-    doc.text(`Date: ${new Date(rep.created_at).toLocaleString()}`, margin, y);
-    y += 24;
+    y += 28;
 
     const loadImg = (url: string) =>
       new Promise<{ dataUrl: string; w: number; h: number } | null>((resolve) => {
@@ -120,7 +113,15 @@ export default function ReportDetail() {
         img.src = url;
       });
 
-    if (bad.length > 0) {
+    if (bad.length === 0) {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(12);
+      doc.text("No issues reported.", margin, y);
+      doc.save(`${fileBase}.pdf`);
+      return;
+    }
+
+    {
       doc.setFont("helvetica", "bold");
       doc.setFontSize(14);
       ensureSpace(20);
@@ -162,26 +163,6 @@ export default function ReportDetail() {
           }
         }
         y += 6;
-      }
-      y += 6;
-    }
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
-    ensureSpace(20);
-    doc.text(`Passed (${good.length})`, margin, y);
-    y += 18;
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(11);
-    if (good.length === 0) {
-      ensureSpace(14);
-      doc.text("None", margin, y);
-    } else {
-      for (const it of good) {
-        const lines = doc.splitTextToSize(`• ${it.checklist_items?.label ?? ""}`, pageW - margin * 2);
-        ensureSpace(lines.length * 14);
-        doc.text(lines, margin, y);
-        y += lines.length * 14;
       }
     }
 
