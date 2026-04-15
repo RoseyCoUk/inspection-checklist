@@ -96,7 +96,6 @@ export default function CheckPage() {
 
   function saveIssue() {
     if (!modalItem) return;
-    if (!draftNote.trim()) return;
     setAnswers((a) => ({ ...a, [modalItem.id]: { status: "bad", note: draftNote, photo: draftPhoto } }));
     closeModal();
   }
@@ -288,13 +287,7 @@ export default function CheckPage() {
                   onChange={(e) => setDraftPhoto(e.target.files?.[0] ?? null)}
                 />
                 {draftPhoto && <span className="muted" style={{ fontSize: 12 }}>📷 {draftPhoto.name}</span>}
-                <button
-                  type="button"
-                  onClick={saveIssue}
-                  className="btn"
-                  disabled={!draftNote.trim()}
-                  style={{ opacity: !draftNote.trim() ? 0.5 : 1 }}
-                >
+                <button type="button" onClick={saveIssue} className="btn">
                   {t("save")}
                 </button>
                 <button type="button" onClick={closeModal} className="btn ghost">{t("cancel")}</button>
