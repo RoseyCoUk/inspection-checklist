@@ -7,7 +7,7 @@ import type { ChecklistItem, Room } from "@/lib/types";
 import { translateItem, useLang, useT } from "@/lib/i18n";
 import LangToggle from "../../LangToggle";
 
-type Answer = { status: "good" | "bad" | null; note: string; photo: File | null };
+type Answer = { status: "good" | "bad" | null; note: string; photos: File[] };
 
 export default function CheckPage() {
   const { roomId } = useParams<{ roomId: string }>();
@@ -21,7 +21,7 @@ export default function CheckPage() {
   const [modalItem, setModalItem] = useState<ChecklistItem | null>(null);
   const [modalMode, setModalMode] = useState<"choose" | "issue">("choose");
   const [draftNote, setDraftNote] = useState("");
-  const [draftPhoto, setDraftPhoto] = useState<File | null>(null);
+  const [draftPhotos, setDraftPhotos] = useState<File[]>([]);
   const [prevChecked, setPrevChecked] = useState<Record<string, { status: "good" | "bad"; worker: string }>>({});
   const [lang] = useLang();
   const t = useT();
@@ -49,7 +49,7 @@ export default function CheckPage() {
       const list = (ci ?? []) as ChecklistItem[];
       setItems(list);
       const init: Record<string, Answer> = {};
-      for (const it of list) init[it.id] = { status: null, note: "", photo: null };
+      for (const it of list) init[it.id] = { status: null, note: "", photos: [] };
       setAnswers(init);
 
       const { data: lastRep } = await supabase
@@ -78,31 +78,31 @@ export default function CheckPage() {
     setModalItem(it);
     setModalMode(cur?.status === "bad" ? "issue" : "choose");
     setDraftNote(cur?.note ?? "");
-    setDraftPhoto(cur?.photo ?? null);
+    setDraftPhotos(cur?.photos ?? []);
   }
 
   function closeModal() {
     setModalItem(null);
     setModalMode("choose");
     setDraftNote("");
-    setDraftPhoto(null);
+    setDraftPhotos([]);
   }
 
   function markGood() {
     if (!modalItem) return;
-    setAnswers((a) => ({ ...a, [modalItem.id]: { status: "good", note: "", photo: null } }));
+    setAnswers((a) => ({ ...a, [modalItem.id]: { status: "good", note: "", photos: [] } }));
     closeModal();
   }
 
   function clearAnswer() {
     if (!modalItem) return;
-    setAnswers((a) => ({ ...a, [modalItem.id]: { status: null, note: "", photo: null } }));
+    setAnswers((a) => ({ ...a, [modalItem.id]: { status: null, note: "", photos: [] } }));
     closeModal();
   }
 
   function saveIssue() {
     if (!modalItem) return;
-    setAnswers((a) => ({ ...a, [modalItem.id]: { status: "bad", note: draftNote, photo: draftPhoto } }));
+    setAnswers((a) => ({ ...a, [modalItem.id]: { status: "bad", note: draftNote, photos: draftPhotos } }));
     closeModal();
   }
 
@@ -126,14 +126,19 @@ export default function CheckPage() {
       for (const it of items) {
         const ans = answers[it.id];
         let photo_path: string | null = null;
-        if (ans.status === "bad" && ans.photo) {
-          const ext = ans.photo.name.split(".").pop() || "jpg";
-          const path = `reports/${reportId}/${it.id}.${ext}`;
-          const { error: upErr } = await supabase.storage
-            .from(PHOTO_BUCKET)
-            .upload(path, ans.photo, { upsert: true });
-          if (upErr) throw upErr;
-          photo_path = path;
+        if (ans.status === "bad" && ans.photos.length > 0) {
+          const uploaded: string[] = [];
+          for (let i = 0; i < ans.photos.length; i++) {
+            const file = ans.photos[i];
+            const ext = file.name.split(".").pop() || "jpg";
+            const path = `reports/${reportId}/${it.id}-${i}.${ext}`;
+            const { error: upErr } = await supabase.storage
+              .from(PHOTO_BUCKET)
+              .upload(path, file, { upsert: true });
+            if (upErr) throw upErr;
+            uploaded.push(path);
+          }
+          photo_path = uploaded.join("\n");
         }
         const { error: e2 } = await supabase.from("report_items").insert({
           report_id: reportId,
@@ -293,9 +298,27 @@ export default function CheckPage() {
                   type="file"
                   accept="image/*"
                   capture="environment"
-                  onChange={(e) => setDraftPhoto(e.target.files?.[0] ?? null)}
+                  multiple
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files ?? []);
+                    if (files.length) setDraftPhotos((prev) => [...prev, ...files]);
+                    e.target.value = "";
+                  }}
                 />
-                {draftPhoto && <span className="muted" style={{ fontSize: 12 }}>📷 {draftPhoto.name}</span>}
+                {draftPhotos.length > 0 && (
+                  <div className="stack" style={{ gap: 4 }}>
+                    {draftPhotos.map((f, i) => (
+                      <div key={i} className="row-between" style={{ fontSize: 12 }}>
+                        <span className="muted" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>📷 {f.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => setDraftPhotos((prev) => prev.filter((_, j) => j !== i))}
+                          style={{ background: "none", border: "none", color: "var(--red)", cursor: "pointer", fontSize: 14, padding: "0 4px" }}
+                        >×</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <button type="button" onClick={saveIssue} className="btn">
                   {t("save")}
                 </button>

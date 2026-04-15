@@ -41,6 +41,9 @@ export default function ReportDetail() {
   const bad = rep.report_items.filter((i) => i.status === "bad");
   const good = rep.report_items.filter((i) => i.status === "good");
 
+  const photoPathsFor = (p: string | null) =>
+    p ? p.split(/\r?\n/).map((s) => s.trim()).filter(Boolean) : [];
+
   const roomNum = rep.rooms?.number ?? "unknown";
   const dateStr = new Date(rep.created_at).toISOString().slice(0, 10);
   const fileBase = `report-room-${roomNum}-${dateStr}`;
@@ -56,9 +59,9 @@ export default function ReportDetail() {
         it.checklist_items?.label ?? "",
         it.status,
         it.note ?? "",
-        it.photo_path
-          ? supabase.storage.from(PHOTO_BUCKET).getPublicUrl(it.photo_path).data.publicUrl
-          : "",
+        photoPathsFor(it.photo_path)
+          .map((p) => supabase.storage.from(PHOTO_BUCKET).getPublicUrl(p).data.publicUrl)
+          .join(" | "),
       ]),
     ];
     const csv = rows.map((r) => r.map((c) => esc(String(c))).join(",")).join("\r\n");
@@ -142,8 +145,8 @@ export default function ReportDetail() {
           y += noteLines.length * 13 + 4;
         }
 
-        if (it.photo_path) {
-          const url = supabase.storage.from(PHOTO_BUCKET).getPublicUrl(it.photo_path).data.publicUrl;
+        for (const p of photoPathsFor(it.photo_path)) {
+          const url = supabase.storage.from(PHOTO_BUCKET).getPublicUrl(p).data.publicUrl;
           const img = await loadImg(url);
           if (img) {
             const maxW = pageW - margin * 2 - 12;
@@ -206,9 +209,9 @@ export default function ReportDetail() {
           <h2>Issues</h2>
           <div className="stack" style={{ marginBottom: 24 }}>
             {bad.map((it) => {
-              const photoUrl = it.photo_path
-                ? supabase.storage.from(PHOTO_BUCKET).getPublicUrl(it.photo_path).data.publicUrl
-                : null;
+              const photoUrls = photoPathsFor(it.photo_path).map(
+                (p) => supabase.storage.from(PHOTO_BUCKET).getPublicUrl(p).data.publicUrl
+              );
               return (
                 <div key={it.id} className="card" style={{ borderLeft: "3px solid var(--red)" }}>
                   <div className="row-between">
@@ -216,13 +219,14 @@ export default function ReportDetail() {
                     <span className="badge bad">Bad</span>
                   </div>
                   {it.note && <p style={{ marginTop: 10 }}>{it.note}</p>}
-                  {photoUrl && (
+                  {photoUrls.map((url, i) => (
                     <img
-                      src={photoUrl}
+                      key={i}
+                      src={url}
                       alt=""
                       style={{ maxWidth: "100%", marginTop: 12, borderRadius: 4, border: "1px solid var(--beige)" }}
                     />
-                  )}
+                  ))}
                 </div>
               );
             })}
