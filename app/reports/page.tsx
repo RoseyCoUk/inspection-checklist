@@ -60,6 +60,7 @@ export default function ReportsPage() {
                 <th>{t("room")}</th>
                 <th>{t("worker")}</th>
                 <th>{t("issues")}</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -78,6 +79,29 @@ export default function ReportsPage() {
                     ) : (
                       <span className="badge good">Clean</span>
                     )}
+                  </td>
+                  <td>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!confirm("Delete this report?")) return;
+                        const { error } = await supabase.from("reports").delete().eq("id", r.id);
+                        if (error) { alert(error.message); return; }
+                        setRows((rs) => rs.filter((x) => x.id !== r.id));
+                      }}
+                      style={{
+                        background: "transparent",
+                        border: "1px solid #a83232",
+                        color: "#a83232",
+                        padding: "4px 10px",
+                        borderRadius: 4,
+                        fontSize: 12,
+                        cursor: "pointer",
+                        fontFamily: "inherit",
+                      }}
+                    >
+                      ✕
+                    </button>
                   </td>
                 </tr>
               ))}
