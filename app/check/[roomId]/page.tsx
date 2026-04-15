@@ -22,6 +22,7 @@ export default function CheckPage() {
   const [modalMode, setModalMode] = useState<"choose" | "issue">("choose");
   const [draftNote, setDraftNote] = useState("");
   const [draftPhoto, setDraftPhoto] = useState<File | null>(null);
+  const [prevChecked, setPrevChecked] = useState<Record<string, { status: "good" | "bad"; worker: string }>>({});
   const [lang] = useLang();
   const t = useT();
 
@@ -50,6 +51,25 @@ export default function CheckPage() {
       const init: Record<string, Answer> = {};
       for (const it of list) init[it.id] = { status: null, note: "", photo: null };
       setAnswers(init);
+
+      const { data: lastRep } = await supabase
+        .from("reports")
+        .select("id, worker_name")
+        .eq("room_id", roomId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (lastRep) {
+        const { data: prevItems } = await supabase
+          .from("report_items")
+          .select("checklist_item_id, status")
+          .eq("report_id", (lastRep as any).id);
+        const map: Record<string, { status: "good" | "bad"; worker: string }> = {};
+        for (const p of (prevItems ?? []) as any[]) {
+          map[p.checklist_item_id] = { status: p.status, worker: (lastRep as any).worker_name };
+        }
+        setPrevChecked(map);
+      }
     })();
   }, [roomId, router]);
 
@@ -149,8 +169,10 @@ export default function CheckPage() {
         {items.map((it) => {
           const a = answers[it.id];
           const status = a?.status;
+          const prev = prevChecked[it.id];
+          const isPrev = !!prev && status === null;
           const bg = "#FFFFFF";
-          const borderColor = status === "good" ? "#4a7a3a" : status === "bad" ? "#a83232" : "#B8962E";
+          const borderColor = status === "good" ? "#4a7a3a" : status === "bad" ? "#a83232" : isPrev ? "#C9BAA8" : "#B8962E";
           return (
             <button
               key={it.id}
@@ -184,7 +206,18 @@ export default function CheckPage() {
               }}>
                 {status === "good" ? "✓" : status === "bad" ? "!" : ""}
               </span>
-              <span style={{ flex: 1, color: "#3A2A1A" }}>{translateItem(it.label, lang)}</span>
+              <span style={{
+                flex: 1,
+                color: isPrev ? "#6B5D4F" : "#3A2A1A",
+                textDecoration: isPrev ? "line-through" : "none",
+              }}>
+                {translateItem(it.label, lang)}
+                {isPrev && (
+                  <span style={{ display: "block", fontSize: 11, marginTop: 2, textDecoration: "none", color: "#6B5D4F" }}>
+                    {prev.status === "bad" ? "!" : "✓"} {prev.worker}
+                  </span>
+                )}
+              </span>
               <span style={{ fontSize: 12, fontWeight: 600, color: status === "good" ? "#4a7a3a" : status === "bad" ? "#a83232" : "#6B5D4F" }}>
                 {status === "good" ? t("good") : status === "bad" ? t("issue") : ""}
               </span>
