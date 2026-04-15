@@ -68,8 +68,8 @@ function RoomsPageInner() {
 
       {floorKeys.map((floor) => (
         <details key={floor} style={{ marginBottom: 12 }}>
-          <summary style={{ cursor: "pointer", padding: "12px 16px", background: "var(--card, #1a1a1a)", borderRadius: 8, fontWeight: 600, fontSize: 18 }}>
-            {floor} <span className="muted" style={{ fontWeight: 400, fontSize: 14 }}>({grouped[floor].length} rooms)</span>
+          <summary style={{ cursor: "pointer", padding: "14px 18px", background: "var(--white)", border: "1px solid var(--beige)", borderLeft: "3px solid var(--gold)", borderRadius: 6, fontFamily: "'Cormorant Garamond', serif", fontWeight: 600, fontSize: 22, color: "var(--brown)", letterSpacing: 2 }}>
+            {floor} <span className="muted" style={{ fontFamily: "'Inter', sans-serif", fontWeight: 400, fontSize: 14, letterSpacing: 0 }}>({grouped[floor].length} rooms)</span>
           </summary>
           <div className="stack" style={{ marginTop: 8 }}>
             {grouped[floor].map((r) => (
