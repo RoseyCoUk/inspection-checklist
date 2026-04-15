@@ -1,10 +1,13 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useT } from "@/lib/i18n";
+import LangToggle from "./LangToggle";
 
 export default function Home() {
   const [name, setName] = useState("");
   const router = useRouter();
+  const t = useT();
 
   useEffect(() => {
     const saved = localStorage.getItem("worker_name");
@@ -20,22 +23,23 @@ export default function Home() {
 
   return (
     <main>
+      <LangToggle />
       <div className="hdr">
-        <h1>Raha Resort</h1>
-        <span className="sub">Inspection</span>
+        <h1>{t("appTitle")}</h1>
+        <span className="sub">{t("inspection")}</span>
       </div>
       <div className="card">
-        <h2>Welcome</h2>
-        <p className="muted">Enter your name to begin today&apos;s inspection.</p>
+        <h2>{t("welcome")}</h2>
+        <p className="muted">{t("enterName")}</p>
         <form onSubmit={start} className="stack" style={{ marginTop: 18 }}>
           <input
             className="input"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Your name"
+            placeholder={t("yourName")}
             autoFocus
           />
-          <button type="submit" className="btn">Start inspection</button>
+          <button type="submit" className="btn">{t("startInspection")}</button>
         </form>
       </div>
     </main>

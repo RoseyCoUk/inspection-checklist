@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import type { Room } from "@/lib/types";
+import { useT } from "@/lib/i18n";
+import LangToggle from "../LangToggle";
 
 export default function RoomsPage() {
   return (
@@ -21,6 +23,7 @@ function RoomsPageInner() {
   const router = useRouter();
   const sp = useSearchParams();
   const justDone = sp.get("done") === "1";
+  const t = useT();
 
   useEffect(() => {
     const n = localStorage.getItem("worker_name");
@@ -40,43 +43,41 @@ function RoomsPageInner() {
 
   const grouped: Record<string, Room[]> = {};
   for (const r of rooms) {
-    const key = `Floor ${r.number.charAt(0)}`;
+    const key = r.number.charAt(0);
     (grouped[key] ??= []).push(r);
   }
   const floorKeys = Object.keys(grouped).sort();
 
   return (
     <main>
-      <Link href="/" className="muted" style={{ display: "inline-block", marginBottom: 12 }}>← Home</Link>
+      <LangToggle />
+      <Link href="/" className="muted" style={{ display: "inline-block", marginBottom: 12 }}>← {t("home")}</Link>
       <div className="hdr">
-        <h1>Rooms</h1>
+        <h1>{t("rooms")}</h1>
         <span className="sub">{name}</span>
       </div>
 
       {justDone && (
         <div className="card" style={{ marginBottom: 16, borderLeft: "3px solid var(--green)" }}>
-          <strong style={{ color: "var(--green)" }}>Report saved.</strong>{" "}
-          <span className="muted">Pick the next room.</span>
+          <strong style={{ color: "var(--green)" }}>{t("reportSaved")}</strong>{" "}
+          <span className="muted">{t("pickNext")}</span>
         </div>
       )}
 
-      {loading && <p className="muted">Loading…</p>}
+      {loading && <p className="muted">{t("loading")}</p>}
       {err && <p style={{ color: "var(--red)" }}>Error: {err}</p>}
-      {!loading && !err && rooms.length === 0 && (
-        <div className="card"><p className="muted">No rooms yet. Add some in Supabase.</p></div>
-      )}
 
       {floorKeys.map((floor) => (
         <details key={floor} style={{ marginBottom: 12 }}>
           <summary style={{ cursor: "pointer", padding: "14px 18px", background: "var(--white)", border: "1px solid var(--beige)", borderLeft: "3px solid var(--gold)", borderRadius: 6, fontFamily: "'Cormorant Garamond', serif", fontWeight: 600, fontSize: 22, color: "var(--brown)", letterSpacing: 2 }}>
-            {floor} <span className="muted" style={{ fontFamily: "'Inter', sans-serif", fontWeight: 400, fontSize: 14, letterSpacing: 0 }}>({grouped[floor].length} rooms)</span>
+            {t("floor")} {floor} <span className="muted" style={{ fontFamily: "'Inter', sans-serif", fontWeight: 400, fontSize: 14, letterSpacing: 0 }}>({grouped[floor].length} {t("roomsCount")})</span>
           </summary>
           <div className="stack" style={{ marginTop: 8 }}>
             {grouped[floor].map((r) => (
               <Link key={r.id} href={`/check/${r.id}`} className="room-tile">
                 <div className="row-between">
-                  <span className="num">Room {r.number}</span>
-                  <span className="muted">Start →</span>
+                  <span className="num">{t("room")} {r.number}</span>
+                  <span className="muted">→</span>
                 </div>
               </Link>
             ))}
@@ -85,7 +86,7 @@ function RoomsPageInner() {
       ))}
 
       <div style={{ marginTop: 32, textAlign: "center" }}>
-        <Link href="/" className="muted">Change worker</Link>
+        <Link href="/" className="muted">{t("changeWorker")}</Link>
       </div>
     </main>
   );

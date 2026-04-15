@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { supabase, PHOTO_BUCKET } from "@/lib/supabase";
 import type { ChecklistItem, Room } from "@/lib/types";
+import { translateItem, useLang, useT } from "@/lib/i18n";
+import LangToggle from "../../LangToggle";
 
 type Answer = { status: "good" | "bad" | null; note: string; photo: File | null };
 
@@ -16,6 +18,12 @@ export default function CheckPage() {
   const [worker, setWorker] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [modalItem, setModalItem] = useState<ChecklistItem | null>(null);
+  const [modalMode, setModalMode] = useState<"choose" | "issue">("choose");
+  const [draftNote, setDraftNote] = useState("");
+  const [draftPhoto, setDraftPhoto] = useState<File | null>(null);
+  const [lang] = useLang();
+  const t = useT();
 
   useEffect(() => {
     const n = localStorage.getItem("worker_name");
@@ -45,24 +53,40 @@ export default function CheckPage() {
     })();
   }, [roomId, router]);
 
-  function setStatus(id: string, status: "good" | "bad") {
-    setAnswers((a) => ({ ...a, [id]: { ...a[id], status } }));
+  function openItem(it: ChecklistItem) {
+    const cur = answers[it.id];
+    setModalItem(it);
+    setModalMode(cur?.status === "bad" ? "issue" : "choose");
+    setDraftNote(cur?.note ?? "");
+    setDraftPhoto(cur?.photo ?? null);
   }
-  function setNote(id: string, note: string) {
-    setAnswers((a) => ({ ...a, [id]: { ...a[id], note } }));
+
+  function closeModal() {
+    setModalItem(null);
+    setModalMode("choose");
+    setDraftNote("");
+    setDraftPhoto(null);
   }
-  function setPhoto(id: string, photo: File | null) {
-    setAnswers((a) => ({ ...a, [id]: { ...a[id], photo } }));
+
+  function markGood() {
+    if (!modalItem) return;
+    setAnswers((a) => ({ ...a, [modalItem.id]: { status: "good", note: "", photo: null } }));
+    closeModal();
+  }
+
+  function saveIssue() {
+    if (!modalItem) return;
+    if (!draftNote.trim() || !draftPhoto) return;
+    setAnswers((a) => ({ ...a, [modalItem.id]: { status: "bad", note: draftNote, photo: draftPhoto } }));
+    closeModal();
   }
 
   const allAnswered = items.length > 0 && items.every((it) => answers[it.id]?.status !== null);
-  const badIncomplete = items.some((it) => {
-    const a = answers[it.id];
-    return a?.status === "bad" && (!a.note.trim() || !a.photo);
-  });
+  const doneCount = items.filter((it) => answers[it.id]?.status !== null).length;
+  const pct = items.length ? Math.round((doneCount / items.length) * 100) : 0;
 
   async function submit() {
-    if (!allAnswered || badIncomplete || submitting) return;
+    if (!allAnswered || submitting) return;
     setSubmitting(true);
     setErr(null);
     try {
@@ -103,22 +127,20 @@ export default function CheckPage() {
   }
 
   if (err) return <main><div className="card"><p style={{ color: "var(--red)" }}>Error: {err}</p></div></main>;
-  if (!room) return <main><p className="muted">Loading…</p></main>;
-  if (items.length === 0) return <main><div className="card"><p className="muted">No checklist items.</p></div></main>;
-
-  const doneCount = items.filter((it) => answers[it.id]?.status !== null).length;
-  const pct = Math.round((doneCount / items.length) * 100);
+  if (!room) return <main><p className="muted">{t("loading")}</p></main>;
+  if (items.length === 0) return <main><div className="card"><p className="muted">{t("loading")}</p></div></main>;
 
   return (
     <main>
-      <Link href="/rooms" className="muted" style={{ display: "inline-block", marginBottom: 12 }}>← Back to rooms</Link>
+      <LangToggle />
+      <Link href="/rooms" className="muted" style={{ display: "inline-block", marginBottom: 12 }}>← {t("backToRooms")}</Link>
       <div className="hdr">
-        <h1>Room {room.number}</h1>
+        <h1>{t("room")} {room.number}</h1>
         <span className="sub">{worker}</span>
       </div>
 
       <div className="row-between muted" style={{ fontSize: 13 }}>
-        <span>{doneCount} of {items.length} checked</span>
+        <span>{doneCount} {t("of")} {items.length} {t("checked")}</span>
         <span>{pct}%</span>
       </div>
       <div className="progress"><span style={{ width: `${pct}%` }} /></div>
@@ -126,49 +148,46 @@ export default function CheckPage() {
       <div className="stack" style={{ marginTop: 16 }}>
         {items.map((it) => {
           const a = answers[it.id];
-          if (!a) return null;
+          const status = a?.status;
+          const bg = status === "good" ? "#e3efd9" : status === "bad" ? "#f5d9d9" : "var(--white)";
+          const borderColor = status === "good" ? "var(--green)" : status === "bad" ? "var(--red)" : "var(--gold)";
           return (
-            <div key={it.id} className="card">
-              <div className="item-label" style={{ marginBottom: 12 }}>{it.label}</div>
-              <div style={{ display: "flex", gap: 8 }}>
-                <button
-                  type="button"
-                  onClick={() => setStatus(it.id, "good")}
-                  className={`btn good${a.status === "good" ? "" : " ghost"}`}
-                  style={{ flex: 1 }}
-                >
-                  {a.status === "good" ? "✓ Good" : "Good"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setStatus(it.id, "bad")}
-                  className={`btn bad${a.status === "bad" ? "" : " ghost"}`}
-                  style={{ flex: 1 }}
-                >
-                  {a.status === "bad" ? "✕ Issue" : "Issue"}
-                </button>
-              </div>
-
-              {a.status === "bad" && (
-                <div className="stack" style={{ marginTop: 12 }}>
-                  <textarea
-                    className="input"
-                    value={a.note}
-                    onChange={(e) => setNote(it.id, e.target.value)}
-                    rows={2}
-                    placeholder="Describe the issue"
-                  />
-                  <input
-                    className="input"
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                    onChange={(e) => setPhoto(it.id, e.target.files?.[0] ?? null)}
-                  />
-                  {a.photo && <span className="muted" style={{ fontSize: 12 }}>📷 {a.photo.name}</span>}
-                </div>
-              )}
-            </div>
+            <button
+              key={it.id}
+              type="button"
+              onClick={() => openItem(it)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                padding: "14px 16px",
+                background: bg,
+                border: "1px solid var(--beige)",
+                borderLeft: `3px solid ${borderColor}`,
+                borderRadius: 6,
+                cursor: "pointer",
+                textAlign: "start",
+                fontFamily: "inherit",
+                fontSize: 16,
+                color: "var(--text)",
+                width: "100%",
+              }}
+            >
+              <span style={{
+                width: 24, height: 24, borderRadius: 4,
+                border: `2px solid ${borderColor}`,
+                background: status ? borderColor : "transparent",
+                color: "var(--white)", fontSize: 16, fontWeight: 700,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                flexShrink: 0,
+              }}>
+                {status === "good" ? "✓" : status === "bad" ? "!" : ""}
+              </span>
+              <span style={{ flex: 1 }}>{translateItem(it.label, lang)}</span>
+              <span className="muted" style={{ fontSize: 12 }}>
+                {status === "good" ? t("good") : status === "bad" ? t("issue") : ""}
+              </span>
+            </button>
           );
         })}
       </div>
@@ -176,13 +195,82 @@ export default function CheckPage() {
       <div style={{ marginTop: 24, position: "sticky", bottom: 16 }}>
         <button
           onClick={submit}
-          disabled={!allAnswered || badIncomplete || submitting}
+          disabled={!allAnswered || submitting}
           className="btn"
-          style={{ width: "100%", opacity: (!allAnswered || badIncomplete || submitting) ? 0.5 : 1 }}
+          style={{ width: "100%", opacity: (!allAnswered || submitting) ? 0.5 : 1 }}
         >
-          {submitting ? "Saving…" : badIncomplete ? "Add note + photo for issues" : !allAnswered ? `${items.length - doneCount} item(s) left` : "Submit report"}
+          {submitting ? t("saving") : !allAnswered ? `${items.length - doneCount} ${t("itemsLeft")}` : t("submitReport")}
         </button>
       </div>
+
+      {modalItem && (
+        <div
+          onClick={closeModal}
+          style={{
+            position: "fixed", inset: 0, background: "rgba(58,42,26,0.5)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            padding: 16, zIndex: 100,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "var(--white)", borderRadius: 10, padding: 24,
+              maxWidth: 420, width: "100%", border: "1px solid var(--beige)",
+              maxHeight: "90vh", overflowY: "auto",
+            }}
+          >
+            <h2 style={{ marginTop: 0 }}>{translateItem(modalItem.label, lang)}</h2>
+
+            {modalMode === "choose" && (
+              <>
+                <p className="muted" style={{ marginBottom: 16 }}>{t("goodOrIssue")}</p>
+                <div className="stack">
+                  <button type="button" onClick={markGood} className="btn good">✓ {t("good")}</button>
+                  <button type="button" onClick={() => setModalMode("issue")} className="btn bad">! {t("issue")}</button>
+                  <button type="button" onClick={closeModal} className="btn ghost">{t("cancel")}</button>
+                </div>
+              </>
+            )}
+
+            {modalMode === "issue" && (
+              <div className="stack">
+                <label className="muted" style={{ fontSize: 12, letterSpacing: 1.5, textTransform: "uppercase" }}>
+                  {t("describeIssue")}
+                </label>
+                <textarea
+                  className="input"
+                  value={draftNote}
+                  onChange={(e) => setDraftNote(e.target.value)}
+                  rows={3}
+                  placeholder={t("describeIssue")}
+                />
+                <label className="muted" style={{ fontSize: 12, letterSpacing: 1.5, textTransform: "uppercase" }}>
+                  {t("photo")}
+                </label>
+                <input
+                  className="input"
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={(e) => setDraftPhoto(e.target.files?.[0] ?? null)}
+                />
+                {draftPhoto && <span className="muted" style={{ fontSize: 12 }}>📷 {draftPhoto.name}</span>}
+                <button
+                  type="button"
+                  onClick={saveIssue}
+                  className="btn"
+                  disabled={!draftNote.trim() || !draftPhoto}
+                  style={{ opacity: (!draftNote.trim() || !draftPhoto) ? 0.5 : 1 }}
+                >
+                  {t("save")}
+                </button>
+                <button type="button" onClick={closeModal} className="btn ghost">{t("cancel")}</button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </main>
   );
 }

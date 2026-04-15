@@ -2,6 +2,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { useT } from "@/lib/i18n";
+import LangToggle from "../LangToggle";
 
 type Row = {
   id: string;
@@ -15,6 +17,7 @@ export default function ReportsPage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+  const t = useT();
 
   useEffect(() => {
     (async () => {
@@ -38,24 +41,25 @@ export default function ReportsPage() {
 
   return (
     <main>
-      <Link href="/" className="muted" style={{ display: "inline-block", marginBottom: 12 }}>← Home</Link>
+      <LangToggle />
+      <Link href="/" className="muted" style={{ display: "inline-block", marginBottom: 12 }}>← {t("home")}</Link>
       <div className="hdr">
-        <h1>Reports</h1>
-        <span className="sub">Manager View</span>
+        <h1>{t("reports")}</h1>
+        <span className="sub">{t("managerView")}</span>
       </div>
 
       <div className="card">
-        {loading && <p className="muted">Loading…</p>}
+        {loading && <p className="muted">{t("loading")}</p>}
         {err && <p style={{ color: "var(--red)" }}>Error: {err}</p>}
-        {!loading && !err && rows.length === 0 && <p className="muted">No reports yet.</p>}
+        {!loading && !err && rows.length === 0 && <p className="muted">{t("noReports")}</p>}
         {rows.length > 0 && (
           <table>
             <thead>
               <tr>
-                <th>Date</th>
-                <th>Room</th>
-                <th>Worker</th>
-                <th>Issues</th>
+                <th>{t("date")}</th>
+                <th>{t("room")}</th>
+                <th>{t("worker")}</th>
+                <th>{t("issues")}</th>
               </tr>
             </thead>
             <tbody>
