@@ -43,6 +43,7 @@ export default function ReportDetail() {
 
   return (
     <main>
+      <Link href="/reports" className="muted" style={{ display: "inline-block", marginBottom: 12 }}>← Back to reports</Link>
       <div className="hdr">
         <h1>Room {rep.rooms?.number ?? "?"}</h1>
         <span className="sub">{rep.worker_name}</span>

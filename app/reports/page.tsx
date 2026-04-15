@@ -38,6 +38,7 @@ export default function ReportsPage() {
 
   return (
     <main>
+      <Link href="/" className="muted" style={{ display: "inline-block", marginBottom: 12 }}>← Home</Link>
       <div className="hdr">
         <h1>Reports</h1>
         <span className="sub">Manager View</span>

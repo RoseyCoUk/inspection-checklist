@@ -1,11 +1,19 @@
 "use client";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import type { Room } from "@/lib/types";
 
 export default function RoomsPage() {
+  return (
+    <Suspense fallback={<main><p className="muted">Loading…</p></main>}>
+      <RoomsPageInner />
+    </Suspense>
+  );
+}
+
+function RoomsPageInner() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(true);
@@ -32,12 +40,14 @@ export default function RoomsPage() {
 
   const grouped: Record<string, Room[]> = {};
   for (const r of rooms) {
-    const key = r.room_types?.name ?? "Unknown";
+    const key = `Floor ${r.number.charAt(0)}`;
     (grouped[key] ??= []).push(r);
   }
+  const floorKeys = Object.keys(grouped).sort();
 
   return (
     <main>
+      <Link href="/" className="muted" style={{ display: "inline-block", marginBottom: 12 }}>← Home</Link>
       <div className="hdr">
         <h1>Rooms</h1>
         <span className="sub">{name}</span>
@@ -56,11 +66,13 @@ export default function RoomsPage() {
         <div className="card"><p className="muted">No rooms yet. Add some in Supabase.</p></div>
       )}
 
-      {Object.entries(grouped).map(([type, list]) => (
-        <section key={type} style={{ marginBottom: 24 }}>
-          <h2>{type}</h2>
-          <div className="stack">
-            {list.map((r) => (
+      {floorKeys.map((floor) => (
+        <details key={floor} style={{ marginBottom: 12 }}>
+          <summary style={{ cursor: "pointer", padding: "12px 16px", background: "var(--card, #1a1a1a)", borderRadius: 8, fontWeight: 600, fontSize: 18 }}>
+            {floor} <span className="muted" style={{ fontWeight: 400, fontSize: 14 }}>({grouped[floor].length} rooms)</span>
+          </summary>
+          <div className="stack" style={{ marginTop: 8 }}>
+            {grouped[floor].map((r) => (
               <Link key={r.id} href={`/check/${r.id}`} className="room-tile">
                 <div className="row-between">
                   <span className="num">Room {r.number}</span>
@@ -69,7 +81,7 @@ export default function RoomsPage() {
               </Link>
             ))}
           </div>
-        </section>
+        </details>
       ))}
 
       <div style={{ marginTop: 32, textAlign: "center" }}>
