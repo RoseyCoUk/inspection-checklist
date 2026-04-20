@@ -33,6 +33,7 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [exporting, setExporting] = useState<null | "csv" | "pdf">(null);
+  const [progress, setProgress] = useState(0);
   const [filterRoom, setFilterRoom] = useState("");
   const [filterWorker, setFilterWorker] = useState("");
   const [filterStatus, setFilterStatus] = useState<"all" | "clean" | "issues">("all");
@@ -124,12 +125,16 @@ export default function ReportsPage() {
 
   async function exportAllCsv() {
     setExporting("csv");
+    setProgress(0);
     try {
       const reports = await fetchAllDetailed();
+      setProgress(0.15);
       const esc = (v: string) => `"${(v ?? "").replace(/"/g, '""')}"`;
       const header = ["Date", "Room", "Worker", "Item", "Category", "Status", "Note", "Photos"];
       const lines: string[][] = [header];
       const categoryActive = !!(filterCategory || filterIssue);
+      const total = reports.length || 1;
+      let done = 0;
       for (const r of reports) {
         for (const it of r.report_items ?? []) {
           if (categoryActive && (it.status !== "bad" || !itemPassesFilter(it))) continue;
@@ -146,8 +151,11 @@ export default function ReportsPage() {
               .join(" | "),
           ]);
         }
+        done++;
+        setProgress(0.15 + 0.8 * (done / total));
       }
       const csv = lines.map((r) => r.map((c) => esc(String(c))).join(",")).join("\r\n");
+      setProgress(0.98);
       const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -159,13 +167,16 @@ export default function ReportsPage() {
       alert(e.message ?? String(e));
     } finally {
       setExporting(null);
+      setProgress(0);
     }
   }
 
   async function exportAllPdf() {
     setExporting("pdf");
+    setProgress(0);
     try {
       const reports = await fetchAllDetailed();
+      setProgress(0.05);
       const { jsPDF } = await import("jspdf");
       const doc = new jsPDF({ unit: "pt", format: "a4" });
       const pageW = doc.internal.pageSize.getWidth();
@@ -203,6 +214,20 @@ export default function ReportsPage() {
       doc.setFontSize(18);
       doc.text("Inspection Issues", margin, y);
       y += 24;
+
+      let totalUnits = 0;
+      for (const r of reports) {
+        const bad = (r.report_items ?? []).filter((i: any) => i.status === "bad" && itemPassesFilter(i));
+        if (bad.length === 0) continue;
+        totalUnits += 1;
+        for (const it of bad) totalUnits += photoPathsFor(it.photo_path).length;
+      }
+      totalUnits = Math.max(totalUnits, 1);
+      let unitsDone = 0;
+      const tick = (n = 1) => {
+        unitsDone += n;
+        setProgress(0.05 + 0.93 * (unitsDone / totalUnits));
+      };
 
       for (const r of reports) {
         const bad = (r.report_items ?? []).filter((i: any) => i.status === "bad" && itemPassesFilter(i));
@@ -243,6 +268,7 @@ export default function ReportsPage() {
             for (const p of photoPathsFor(it.photo_path)) {
               const url = supabase.storage.from(PHOTO_BUCKET).getPublicUrl(p).data.publicUrl;
               const img = await loadImg(url);
+              tick();
               if (img) {
                 const maxW = pageW - margin * 2 - 12;
                 const maxH = 240;
@@ -259,17 +285,20 @@ export default function ReportsPage() {
             y += 4;
           }
         }
+        tick();
       }
 
       if (first) {
         alert("No issues in the filtered reports — nothing to export.");
         return;
       }
+      setProgress(1);
       doc.save(`issues-${new Date().toISOString().slice(0, 10)}.pdf`);
     } catch (e: any) {
       alert(e.message ?? String(e));
     } finally {
       setExporting(null);
+      setProgress(0);
     }
   }
 
@@ -348,12 +377,17 @@ export default function ReportsPage() {
           </div>
           <div className="row-between" style={{ gap: 8, marginBottom: 12 }}>
             <button className="btn ghost" onClick={exportAllCsv} disabled={exporting !== null || filtered.length === 0}>
-              {exporting === "csv" ? "Exporting…" : `Export ${filtered.length === rows.length ? "All" : "Filtered"} (CSV)`}
+              {exporting === "csv" ? `Exporting… ${Math.round(progress * 100)}%` : `Export ${filtered.length === rows.length ? "All" : "Filtered"} (CSV)`}
             </button>
             <button className="btn ghost" onClick={exportAllPdf} disabled={exporting !== null || filtered.length === 0}>
-              {exporting === "pdf" ? "Exporting…" : `Export ${filtered.length === rows.length ? "All" : "Filtered"} (PDF)`}
+              {exporting === "pdf" ? `Exporting… ${Math.round(progress * 100)}%` : `Export ${filtered.length === rows.length ? "All" : "Filtered"} (PDF)`}
             </button>
           </div>
+          {exporting !== null && (
+            <div style={{ height: 6, background: "var(--beige)", borderRadius: 3, overflow: "hidden", marginBottom: 12 }}>
+              <div style={{ width: `${Math.round(progress * 100)}%`, height: "100%", background: "var(--gold)", transition: "width 120ms linear" }} />
+            </div>
+          )}
         </>
       )}
 
