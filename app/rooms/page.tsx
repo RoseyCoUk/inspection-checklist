@@ -47,6 +47,7 @@ function RoomsPageInner() {
     (grouped[key] ??= []).push(r);
   }
   const floorKeys = Object.keys(grouped).sort();
+  const isVillaKey = (k: string) => k.toUpperCase() === "V";
 
   return (
     <main>
@@ -67,23 +68,29 @@ function RoomsPageInner() {
       {loading && <p className="muted">{t("loading")}</p>}
       {err && <p style={{ color: "var(--red)" }}>Error: {err}</p>}
 
-      {floorKeys.map((floor) => (
-        <details key={floor} style={{ marginBottom: 12 }}>
-          <summary style={{ cursor: "pointer", padding: "14px 18px", background: "var(--white)", border: "1px solid var(--beige)", borderLeft: "3px solid var(--gold)", borderRadius: 6, fontFamily: "'Cormorant Garamond', serif", fontWeight: 600, fontSize: 22, color: "var(--brown)", letterSpacing: 2 }}>
-            {t("floor")} {floor} <span className="muted" style={{ fontFamily: "'Inter', sans-serif", fontWeight: 400, fontSize: 14, letterSpacing: 0 }}>({grouped[floor].length} {t("roomsCount")})</span>
-          </summary>
-          <div className="stack" style={{ marginTop: 8 }}>
-            {grouped[floor].map((r) => (
-              <Link key={r.id} href={`/check/${r.id}`} className="room-tile">
-                <div className="row-between">
-                  <span className="num">{t("room")} {r.number}</span>
-                  <span className="muted">→</span>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </details>
-      ))}
+      {floorKeys.map((floor) => {
+        const villa = isVillaKey(floor);
+        const heading = villa ? t("villas") : `${t("floor")} ${floor}`;
+        return (
+          <details key={floor} style={{ marginBottom: 12 }}>
+            <summary style={{ cursor: "pointer", padding: "14px 18px", background: "var(--white)", border: "1px solid var(--beige)", borderLeft: "3px solid var(--gold)", borderRadius: 6, fontFamily: "'Cormorant Garamond', serif", fontWeight: 600, fontSize: 22, color: "var(--brown)", letterSpacing: 2 }}>
+              {heading} <span className="muted" style={{ fontFamily: "'Inter', sans-serif", fontWeight: 400, fontSize: 14, letterSpacing: 0 }}>({grouped[floor].length} {t("roomsCount")})</span>
+            </summary>
+            <div className="stack" style={{ marginTop: 8 }}>
+              {grouped[floor].map((r) => (
+                <Link key={r.id} href={`/check/${r.id}`} className="room-tile">
+                  <div className="row-between">
+                    <span className="num">
+                      {villa ? `${t("villa")} ${r.number.slice(1)}` : `${t("room")} ${r.number}`}
+                    </span>
+                    <span className="muted">→</span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </details>
+        );
+      })}
 
       <div style={{ marginTop: 32, textAlign: "center" }}>
         <Link href="/" className="muted">{t("changeWorker")}</Link>

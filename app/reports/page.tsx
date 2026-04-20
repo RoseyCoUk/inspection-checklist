@@ -5,12 +5,27 @@ import { supabase, PHOTO_BUCKET } from "@/lib/supabase";
 import { useT } from "@/lib/i18n";
 import LangToggle from "../LangToggle";
 
+type BadItem = { category: string; label: string };
 type Row = {
   id: string;
   worker_name: string;
   created_at: string;
   rooms: { number: string } | null;
   bad_count: number;
+  bad_items: BadItem[];
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+  paint: "Paint",
+  wallpaper: "Wallpaper",
+  aluminum: "Aluminum",
+  electrical: "Electrical",
+  hk: "HK",
+  mechanical: "Mechanical",
+  plumbing: "Plumbing",
+  furniture: "Furniture",
+  cleaning: "Cleaning",
+  other: "Other",
 };
 
 export default function ReportsPage() {
@@ -25,10 +40,30 @@ export default function ReportsPage() {
   const [dateTo, setDateTo] = useState("");
   const [sortKey, setSortKey] = useState<"date" | "room" | "worker" | "issues">("date");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [filterCategory, setFilterCategory] = useState("");
+  const [filterIssue, setFilterIssue] = useState("");
   const t = useT();
 
   const rooms = useMemo(() => Array.from(new Set(rows.map((r) => r.rooms?.number).filter(Boolean) as string[])).sort(), [rows]);
   const workers = useMemo(() => Array.from(new Set(rows.map((r) => r.worker_name).filter(Boolean))).sort(), [rows]);
+  const issueLabels = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of rows) for (const it of r.bad_items) {
+      if (!filterCategory || it.category === filterCategory) set.add(it.label);
+    }
+    return Array.from(set).sort();
+  }, [rows, filterCategory]);
+
+  const matchingBadCount = (r: Row) => r.bad_items.filter((it) =>
+    (!filterCategory || it.category === filterCategory) &&
+    (!filterIssue || it.label === filterIssue)
+  ).length;
+
+  const categoryOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of rows) for (const it of r.bad_items) set.add(it.category);
+    return Array.from(set).sort();
+  }, [rows]);
 
   const filtered = useMemo(() => {
     let out = rows.filter((r) => {
@@ -38,6 +73,7 @@ export default function ReportsPage() {
       if (filterStatus === "issues" && r.bad_count === 0) return false;
       if (dateFrom && new Date(r.created_at) < new Date(dateFrom)) return false;
       if (dateTo && new Date(r.created_at) > new Date(dateTo + "T23:59:59")) return false;
+      if ((filterCategory || filterIssue) && matchingBadCount(r) === 0) return false;
       return true;
     });
     const dir = sortDir === "asc" ? 1 : -1;
@@ -52,7 +88,7 @@ export default function ReportsPage() {
       return 0;
     });
     return out;
-  }, [rows, filterRoom, filterWorker, filterStatus, dateFrom, dateTo, sortKey, sortDir]);
+  }, [rows, filterRoom, filterWorker, filterStatus, dateFrom, dateTo, sortKey, sortDir, filterCategory, filterIssue]);
 
   function toggleSort(key: typeof sortKey) {
     if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -61,17 +97,24 @@ export default function ReportsPage() {
 
   function clearFilters() {
     setFilterRoom(""); setFilterWorker(""); setFilterStatus("all"); setDateFrom(""); setDateTo("");
+    setFilterCategory(""); setFilterIssue("");
   }
 
   const photoPathsFor = (p: string | null) =>
     p ? p.split(/\r?\n/).map((s) => s.trim()).filter(Boolean) : [];
+
+  const itemPassesFilter = (it: any) => {
+    if (filterCategory && (it.checklist_items?.category ?? "other") !== filterCategory) return false;
+    if (filterIssue && (it.checklist_items?.label ?? "") !== filterIssue) return false;
+    return true;
+  };
 
   async function fetchAllDetailed() {
     const ids = filtered.map((r) => r.id);
     if (ids.length === 0) return [];
     const { data, error } = await supabase
       .from("reports")
-      .select("id, worker_name, created_at, rooms(number), report_items(id, status, note, photo_path, checklist_items(label))")
+      .select("id, worker_name, created_at, rooms(number), report_items(id, status, note, photo_path, checklist_items(label, category))")
       .in("id", ids)
       .order("created_at", { ascending: false });
     if (error) throw error;
@@ -84,15 +127,18 @@ export default function ReportsPage() {
     try {
       const reports = await fetchAllDetailed();
       const esc = (v: string) => `"${(v ?? "").replace(/"/g, '""')}"`;
-      const header = ["Date", "Room", "Worker", "Item", "Status", "Note", "Photos"];
+      const header = ["Date", "Room", "Worker", "Item", "Category", "Status", "Note", "Photos"];
       const lines: string[][] = [header];
+      const categoryActive = !!(filterCategory || filterIssue);
       for (const r of reports) {
         for (const it of r.report_items ?? []) {
+          if (categoryActive && (it.status !== "bad" || !itemPassesFilter(it))) continue;
           lines.push([
             new Date(r.created_at).toLocaleString(),
             r.rooms?.number ?? "",
             r.worker_name,
             it.checklist_items?.label ?? "",
+            it.checklist_items?.category ?? "other",
             it.status,
             it.note ?? "",
             photoPathsFor(it.photo_path)
@@ -159,7 +205,7 @@ export default function ReportsPage() {
       y += 24;
 
       for (const r of reports) {
-        const bad = (r.report_items ?? []).filter((i: any) => i.status === "bad");
+        const bad = (r.report_items ?? []).filter((i: any) => i.status === "bad" && itemPassesFilter(i));
         if (bad.length === 0) continue;
 
         if (!first) {
@@ -231,17 +277,26 @@ export default function ReportsPage() {
     (async () => {
       const { data, error } = await supabase
         .from("reports")
-        .select("id, worker_name, created_at, rooms(number), report_items(status)")
+        .select("id, worker_name, created_at, rooms(number), report_items(status, checklist_items(label, category))")
         .order("created_at", { ascending: false })
         .limit(200);
       if (error) { setErr(error.message); setLoading(false); return; }
-      const mapped: Row[] = (data ?? []).map((r: any) => ({
-        id: r.id,
-        worker_name: r.worker_name,
-        created_at: r.created_at,
-        rooms: r.rooms,
-        bad_count: (r.report_items ?? []).filter((i: any) => i.status === "bad").length,
-      }));
+      const mapped: Row[] = (data ?? []).map((r: any) => {
+        const bad = (r.report_items ?? [])
+          .filter((i: any) => i.status === "bad")
+          .map((i: any) => ({
+            category: i.checklist_items?.category ?? "other",
+            label: i.checklist_items?.label ?? "",
+          }));
+        return {
+          id: r.id,
+          worker_name: r.worker_name,
+          created_at: r.created_at,
+          rooms: r.rooms,
+          bad_count: bad.length,
+          bad_items: bad,
+        };
+      });
       setRows(mapped);
       setLoading(false);
     })();
@@ -277,6 +332,14 @@ export default function ReportsPage() {
                 <input className="input" type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} placeholder="From" />
                 <input className="input" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} placeholder="To" />
               </div>
+              <select className="input" value={filterCategory} onChange={(e) => { setFilterCategory(e.target.value); setFilterIssue(""); }}>
+                <option value="">{t("allCategories")}</option>
+                {categoryOptions.map((c) => <option key={c} value={c}>{CATEGORY_LABELS[c] ?? c}</option>)}
+              </select>
+              <select className="input" value={filterIssue} onChange={(e) => setFilterIssue(e.target.value)}>
+                <option value="">{t("allIssues")}</option>
+                {issueLabels.map((lbl) => <option key={lbl} value={lbl}>{lbl}</option>)}
+              </select>
             </div>
             <div className="row-between" style={{ marginTop: 10 }}>
               <span className="muted" style={{ fontSize: 13 }}>{filtered.length} of {rows.length}</span>
@@ -324,11 +387,10 @@ export default function ReportsPage() {
                   <td>{r.rooms?.number ?? "?"}</td>
                   <td>{r.worker_name}</td>
                   <td>
-                    {r.bad_count > 0 ? (
-                      <span className="badge bad">{r.bad_count}</span>
-                    ) : (
-                      <span className="badge good">Clean</span>
-                    )}
+                    {(() => {
+                      const n = (filterCategory || filterIssue) ? matchingBadCount(r) : r.bad_count;
+                      return n > 0 ? <span className="badge bad">{n}</span> : <span className="badge good">Clean</span>;
+                    })()}
                   </td>
                   <td>
                     <button

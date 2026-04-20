@@ -9,7 +9,8 @@ create table if not exists checklist_items (
   id uuid primary key default gen_random_uuid(),
   room_type_id uuid not null references room_types(id) on delete cascade,
   label text not null,
-  sort_order int not null default 0
+  sort_order int not null default 0,
+  category text not null default 'other'
 );
 
 create table if not exists rooms (
