@@ -7,7 +7,7 @@
 
 | Phase | Name | Status | Plans |
 |-------|------|--------|-------|
-| 1 | Bug Fixes & Code Quality | In progress (Plans A, B complete) | 4 |
+| 1 | Bug Fixes & Code Quality | In progress (Plans A, B, C complete) | 4 |
 | 2 | Auth & Row-Level Security | Pending | — |
 | 3 | Storage Hardening | Pending | — |
 
@@ -15,7 +15,7 @@
 
 **Phase 1: Bug Fixes & Code Quality** — 4 plans, 1 wave, all autonomous.
 
-Plans A, B complete 2026-05-04. Plans C, D pending.
+Plans A, B, C complete 2026-05-04. Plan D pending.
 
 ## Completed Plans
 
@@ -23,6 +23,7 @@ Plans A, B complete 2026-05-04. Plans C, D pending.
 |------|------|--------|-----------|
 | 01-A | Bug Fixes — Check Page + i18n | f43902b | 2026-05-04 |
 | 01-B | Schema Migrations & Storage-Delete Fix | 7eb52e9 | 2026-05-04 |
+| 01-C | UI Bug Fixes — 200-cap notice, dateFrom timezone, floor grouping | 5bdcb3c | 2026-05-04 |
 
 ## Decisions
 
@@ -32,6 +33,8 @@ Plans A, B complete 2026-05-04. Plans C, D pending.
 - i18n error display: always use t('key') in catch blocks, never expose raw Supabase error messages
 - Storage remove errors are non-blocking (console.warn only): orphan files preferable to stuck delete UI
 - Three schema migrations run as individual DDL statements via supabase CLI: additive DDL is idempotent via IF NOT EXISTS guards
+- Date range filters use T00:00:00/T23:59:59 suffix for local-timezone boundary alignment
+- Floor key extraction uses slice(0,-2) on room number string for correct multi-floor grouping
 
 ## Performance Metrics
 
@@ -39,9 +42,10 @@ Plans A, B complete 2026-05-04. Plans C, D pending.
 |-------|------|----------|-------|-------|
 | 01 | A | 3min | 2 | 2 |
 | 01 | B | 5min | 2 | 2 |
+| 01 | C | 2min | 2 | 2 |
 
 ## Last Session
 
-**Timestamp:** 2026-05-04T07:34:47Z
-**Stopped at:** Completed 01-B plan (Plan B — schema migrations & storage-delete fix)
+**Timestamp:** 2026-05-04T07:40:30Z
+**Stopped at:** Completed 01-C plan (Plan C — UI bug fixes: 200-cap notice, dateFrom timezone, floor grouping)
 **Resume file:** None
