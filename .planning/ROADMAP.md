@@ -10,6 +10,14 @@
 
 **Requirements:** BUG-01 through BUG-14
 
+**Plans:** 4 plans (all Wave 1 — fully parallel)
+
+Plans:
+- [ ] 01-PLAN-A.md — Submission flow hardening: useRef guard, atomic submit with compensating delete, bulk insert, photo resize/cap/counter, empty-state, lang validation, i18n submitError key
+- [ ] 01-PLAN-B.md — Database schema migrations (Supabase MCP): unique index BUG-03, CHECK constraint BUG-05, composite index BUG-12, storage-delete-before-DB-row BUG-06
+- [ ] 01-PLAN-C.md — Reports page fixes: 200-cap notice BUG-04, dateFrom timezone fix BUG-09, floor grouping fix BUG-13
+- [ ] 01-PLAN-D.md — Foundation & tooling: next/font migration + robots noindex BUG-14, ItemCategory type widening BUG-05 (TS side)
+
 **Success criteria:**
 1. Submitting a report from a slow phone never creates duplicate entries in `reports` or `report_items`
 2. A failed mid-submission leaves no orphan `reports` row in the database
