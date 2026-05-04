@@ -431,6 +431,39 @@ export default function ReportsPage() {
                       type="button"
                       onClick={async () => {
                         if (!confirm("Delete this report?")) return;
+
+                        // Step 1: Fetch photo_paths for all items in this report
+                        const { data: items, error: fetchErr } = await supabase
+                          .from("report_items")
+                          .select("photo_path")
+                          .eq("report_id", r.id);
+
+                        if (fetchErr) { alert(fetchErr.message); return; }
+
+                        // Step 2: Collect all storage object paths
+                        const storagePaths: string[] = [];
+                        for (const item of items ?? []) {
+                          if (item.photo_path) {
+                            const paths = item.photo_path
+                              .split(/\r?\n/)
+                              .map((s: string) => s.trim())
+                              .filter(Boolean);
+                            storagePaths.push(...paths);
+                          }
+                        }
+
+                        // Step 3: Delete storage objects before DB row
+                        if (storagePaths.length > 0) {
+                          const { error: storageErr } = await supabase.storage
+                            .from(PHOTO_BUCKET)
+                            .remove(storagePaths);
+                          if (storageErr) {
+                            // Log but do not block — orphan files are preferable to stuck UI
+                            console.warn("Storage delete partial failure:", storageErr.message);
+                          }
+                        }
+
+                        // Step 4: Delete the DB row (cascade removes report_items)
                         const { error } = await supabase.from("reports").delete().eq("id", r.id);
                         if (error) { alert(error.message); return; }
                         setRows((rs) => rs.filter((x) => x.id !== r.id));
