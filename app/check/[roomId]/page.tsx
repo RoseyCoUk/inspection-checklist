@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { supabase, PHOTO_BUCKET } from "@/lib/supabase";
@@ -9,14 +9,50 @@ import LangToggle from "../../LangToggle";
 
 type Answer = { status: "good" | "bad" | null; note: string; photos: File[] };
 
+const MAX_PHOTOS = 5;
+
+async function resizeImage(file: File, maxPx = 1600, quality = 0.7): Promise<File> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+      const w = Math.round(img.width * scale);
+      const h = Math.round(img.height * scale);
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
+      canvas.toBlob(
+        (blob) =>
+          resolve(
+            blob
+              ? new File([blob], file.name.replace(/\.\w+$/, ".jpg"), { type: "image/jpeg" })
+              : file,
+          ),
+        "image/jpeg",
+        quality,
+      );
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(file);
+    };
+    img.src = url;
+  });
+}
+
 export default function CheckPage() {
   const { roomId } = useParams<{ roomId: string }>();
   const router = useRouter();
   const [room, setRoom] = useState<Room | null>(null);
   const [items, setItems] = useState<ChecklistItem[]>([]);
+  const [loaded, setLoaded] = useState(false);
   const [answers, setAnswers] = useState<Record<string, Answer>>({});
   const [worker, setWorker] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
   const [err, setErr] = useState<string | null>(null);
   const [modalItem, setModalItem] = useState<ChecklistItem | null>(null);
   const [modalMode, setModalMode] = useState<"choose" | "issue">("choose");
@@ -48,6 +84,7 @@ export default function CheckPage() {
       if (e2) { setErr(e2.message); return; }
       const list = (ci ?? []) as ChecklistItem[];
       setItems(list);
+      setLoaded(true);
       const init: Record<string, Answer> = {};
       for (const it of list) init[it.id] = { status: null, note: "", photos: [] };
       setAnswers(init);
@@ -111,9 +148,11 @@ export default function CheckPage() {
   const pct = items.length ? Math.round((doneCount / items.length) * 100) : 0;
 
   async function submit() {
-    if (!allAnswered || submitting) return;
+    if (!allAnswered || submittingRef.current) return;
+    submittingRef.current = true;
     setSubmitting(true);
     setErr(null);
+    let reportId: string | null = null;
     try {
       const { data: rep, error: e1 } = await supabase
         .from("reports")
@@ -121,44 +160,60 @@ export default function CheckPage() {
         .select("id")
         .single();
       if (e1) throw e1;
-      const reportId = (rep as any).id as string;
+      reportId = (rep as any).id as string;
 
+      // Upload photos per item (parallel within each item), then bulk-insert all rows
+      const itemRows: any[] = [];
       for (const it of items) {
         const ans = answers[it.id];
         let photo_path: string | null = null;
         if (ans.status === "bad" && ans.photos.length > 0) {
-          const uploaded: string[] = [];
-          for (let i = 0; i < ans.photos.length; i++) {
-            const file = ans.photos[i];
-            const ext = file.name.split(".").pop() || "jpg";
-            const path = `reports/${reportId}/${it.id}-${i}.${ext}`;
-            const { error: upErr } = await supabase.storage
-              .from(PHOTO_BUCKET)
-              .upload(path, file, { upsert: true });
-            if (upErr) throw upErr;
-            uploaded.push(path);
-          }
-          photo_path = uploaded.join("\n");
+          const paths = await Promise.all(
+            ans.photos.map(async (file, i) => {
+              const resized = await resizeImage(file);
+              const path = `reports/${reportId}/${it.id}-${i}.jpg`;
+              const { error: upErr } = await supabase.storage
+                .from(PHOTO_BUCKET)
+                .upload(path, resized, { upsert: true });
+              if (upErr) throw upErr;
+              return path;
+            }),
+          );
+          photo_path = paths.join("\n");
         }
-        const { error: e2 } = await supabase.from("report_items").insert({
+        itemRows.push({
           report_id: reportId,
           checklist_item_id: it.id,
           status: ans.status,
           note: ans.status === "bad" ? ans.note : null,
           photo_path,
         });
-        if (e2) throw e2;
       }
+      const { error: e2 } = await supabase.from("report_items").insert(itemRows);
+      if (e2) throw e2;
+
       router.replace("/rooms?done=1");
     } catch (e: any) {
+      // Compensating delete: remove the partially-written report
+      if (reportId) {
+        await supabase.from("reports").delete().eq("id", reportId);
+      }
       setErr(e.message ?? String(e));
       setSubmitting(false);
+      submittingRef.current = false;
     }
   }
 
   if (err) return <main><div className="card"><p style={{ color: "var(--red)" }}>Error: {err}</p></div></main>;
   if (!room) return <main><p className="muted">{t("loading")}</p></main>;
-  if (items.length === 0) return <main><div className="card"><p className="muted">{t("loading")}</p></div></main>;
+  if (!loaded) return <main><p className="muted">{t("loading")}</p></main>;
+  if (items.length === 0) return (
+    <main>
+      <div className="card">
+        <p className="muted">No checklist items configured for this room type.</p>
+      </div>
+    </main>
+  );
 
   return (
     <main>
@@ -291,20 +346,29 @@ export default function CheckPage() {
                   placeholder={t("describeIssue")}
                 />
                 <label className="muted" style={{ fontSize: 12, letterSpacing: 1.5, textTransform: "uppercase" }}>
-                  {t("photo")}
+                  {t("photo")} (max {MAX_PHOTOS})
                 </label>
-                <input
-                  className="input"
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  multiple
-                  onChange={(e) => {
-                    const files = Array.from(e.target.files ?? []);
-                    if (files.length) setDraftPhotos((prev) => [...prev, ...files]);
-                    e.target.value = "";
-                  }}
-                />
+                {draftPhotos.length < MAX_PHOTOS ? (
+                  <input
+                    className="input"
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    multiple
+                    onChange={(e) => {
+                      const files = Array.from(e.target.files ?? []);
+                      if (files.length) {
+                        setDraftPhotos((prev) => {
+                          const remaining = MAX_PHOTOS - prev.length;
+                          return [...prev, ...files.slice(0, remaining)];
+                        });
+                      }
+                      e.target.value = "";
+                    }}
+                  />
+                ) : (
+                  <p className="muted" style={{ fontSize: 12 }}>Max {MAX_PHOTOS} photos reached</p>
+                )}
                 {draftPhotos.length > 0 && (
                   <div className="stack" style={{ gap: 4 }}>
                     {draftPhotos.map((f, i) => (

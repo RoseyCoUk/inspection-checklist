@@ -72,7 +72,7 @@ export default function ReportsPage() {
       if (filterWorker && r.worker_name !== filterWorker) return false;
       if (filterStatus === "clean" && r.bad_count > 0) return false;
       if (filterStatus === "issues" && r.bad_count === 0) return false;
-      if (dateFrom && new Date(r.created_at) < new Date(dateFrom)) return false;
+      if (dateFrom && new Date(r.created_at) < new Date(dateFrom + "T00:00:00")) return false;
       if (dateTo && new Date(r.created_at) > new Date(dateTo + "T23:59:59")) return false;
       if ((filterCategory || filterIssue) && matchingBadCount(r) === 0) return false;
       return true;
@@ -371,7 +371,10 @@ export default function ReportsPage() {
               </select>
             </div>
             <div className="row-between" style={{ marginTop: 10 }}>
-              <span className="muted" style={{ fontSize: 13 }}>{filtered.length} of {rows.length}</span>
+              <span className="muted" style={{ fontSize: 13 }}>
+                {filtered.length} of {rows.length}
+                {rows.length >= 200 && " (most recent 200)"}
+              </span>
               <button type="button" className="btn ghost" style={{ width: "auto", padding: "6px 12px", fontSize: 13 }} onClick={clearFilters}>Clear filters</button>
             </div>
           </div>
@@ -431,6 +434,15 @@ export default function ReportsPage() {
                       type="button"
                       onClick={async () => {
                         if (!confirm("Delete this report?")) return;
+                        // Clean up storage objects before deleting the DB row
+                        const { data: files } = await supabase.storage
+                          .from(PHOTO_BUCKET)
+                          .list(`reports/${r.id}`);
+                        if (files && files.length > 0) {
+                          await supabase.storage
+                            .from(PHOTO_BUCKET)
+                            .remove(files.map((f) => `reports/${r.id}/${f.name}`));
+                        }
                         const { error } = await supabase.from("reports").delete().eq("id", r.id);
                         if (error) { alert(error.message); return; }
                         setRows((rs) => rs.filter((x) => x.id !== r.id));

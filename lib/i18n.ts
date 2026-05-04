@@ -166,7 +166,8 @@ export function useLang(): [Lang, (l: Lang) => void] {
   const [lang, setLangState] = useState<Lang>("en");
 
   useEffect(() => {
-    const saved = (localStorage.getItem("lang") as Lang) || "en";
+    const raw = localStorage.getItem("lang");
+    const saved: Lang = raw === "ar" ? "ar" : "en";
     setLangState(saved);
     document.documentElement.lang = saved;
     document.documentElement.dir = saved === "ar" ? "rtl" : "ltr";

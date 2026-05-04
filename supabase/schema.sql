@@ -10,7 +10,7 @@ create table if not exists checklist_items (
   room_type_id uuid not null references room_types(id) on delete cascade,
   label text not null,
   sort_order int not null default 0,
-  category text not null default 'other'
+  category text not null default 'other' check (category in ('paint','mechanical','plumbing','electrical','furniture','cleaning','other','wallpaper','aluminum','hk'))
 );
 
 create table if not exists rooms (
@@ -38,6 +38,10 @@ create table if not exists report_items (
 
 create index if not exists reports_created_idx on reports (created_at desc);
 create index if not exists report_items_report_idx on report_items (report_id);
+-- Composite index for the hot-path "latest report for room" query
+create index if not exists reports_room_created_idx on reports (room_id, created_at desc);
+-- Prevent duplicate items within a single report
+create unique index if not exists report_items_unique on report_items (report_id, checklist_item_id);
 
 -- Storage bucket: create manually in Supabase dashboard
 --   name: checklist-photos
