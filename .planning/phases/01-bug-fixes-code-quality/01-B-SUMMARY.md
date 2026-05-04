@@ -115,6 +115,17 @@ None — all migrations applied directly to the live database. No environment va
 - Storage cleanup on delete is wired — Phase 3 can flip the bucket private without worrying about accumulating orphan objects
 - Plan C and D can proceed in parallel — no blocking dependencies on B
 
+## Self-Check: PASSED
+
+- `supabase/schema.sql` contains `report_items_report_item_uniq` — confirmed
+- `supabase/schema.sql` contains `checklist_items_category_check` — confirmed
+- `supabase/schema.sql` contains `reports_room_created_idx` — confirmed
+- `app/reports/page.tsx` contains `supabase.storage.from(PHOTO_BUCKET).remove(storagePaths)` — confirmed
+- `app/reports/page.tsx` contains `from("report_items").select("photo_path").eq("report_id", r.id)` — confirmed
+- Live DB: all three verification queries return 1 row each — confirmed
+- Commits cbc1111 and 7eb52e9 present in git log — confirmed
+- `npx tsc --noEmit` exits 0 — confirmed
+
 ---
 *Phase: 01-bug-fixes-code-quality*
 *Completed: 2026-05-04*
