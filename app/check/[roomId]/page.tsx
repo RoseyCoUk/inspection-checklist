@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { supabase, PHOTO_BUCKET } from "@/lib/supabase";
@@ -9,6 +9,43 @@ import LangToggle from "../../LangToggle";
 
 type Answer = { status: "good" | "bad" | null; note: string; photos: File[] };
 
+// BUG-08: maximum photos per checklist item
+const MAX_PHOTOS = 5;
+
+// BUG-08: resize photo to ≤1600px long edge at 0.7 JPEG quality before upload
+async function resizePhoto(file: File): Promise<File> {
+  const MAX_LONG_EDGE = 1600;
+  const QUALITY = 0.7;
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const { naturalWidth: w, naturalHeight: h } = img;
+      const longEdge = Math.max(w, h);
+      if (longEdge <= MAX_LONG_EDGE) {
+        resolve(file);
+        return;
+      }
+      const scale = MAX_LONG_EDGE / longEdge;
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(w * scale);
+      canvas.height = Math.round(h * scale);
+      canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) { resolve(file); return; }
+          resolve(new File([blob], file.name.replace(/\.[^.]+$/, ".jpg"), { type: "image/jpeg" }));
+        },
+        "image/jpeg",
+        QUALITY
+      );
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+    img.src = url;
+  });
+}
+
 export default function CheckPage() {
   const { roomId } = useParams<{ roomId: string }>();
   const router = useRouter();
@@ -16,6 +53,8 @@ export default function CheckPage() {
   const [items, setItems] = useState<ChecklistItem[]>([]);
   const [answers, setAnswers] = useState<Record<string, Answer>>({});
   const [worker, setWorker] = useState("");
+  // BUG-01: useRef for synchronous double-submit guard; useState only drives UI
+  const submittingRef = useRef(false);
   const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [modalItem, setModalItem] = useState<ChecklistItem | null>(null);
@@ -23,6 +62,8 @@ export default function CheckPage() {
   const [draftNote, setDraftNote] = useState("");
   const [draftPhotos, setDraftPhotos] = useState<File[]>([]);
   const [prevChecked, setPrevChecked] = useState<Record<string, { status: "good" | "bad"; worker: string }>>({});
+  // BUG-10: track whether data has finished loading to distinguish "loading" from "empty"
+  const [loaded, setLoaded] = useState(false);
   const [lang] = useLang();
   const t = useT();
 
@@ -51,6 +92,8 @@ export default function CheckPage() {
       const init: Record<string, Answer> = {};
       for (const it of list) init[it.id] = { status: null, note: "", photos: [] };
       setAnswers(init);
+      // BUG-10: mark load complete so empty-state can be shown
+      setLoaded(true);
 
       const { data: lastRep } = await supabase
         .from("reports")
@@ -111,9 +154,15 @@ export default function CheckPage() {
   const pct = items.length ? Math.round((doneCount / items.length) * 100) : 0;
 
   async function submit() {
-    if (!allAnswered || submitting) return;
+    // BUG-01: synchronous ref check — fires before any await, no re-render gap
+    if (!allAnswered || submittingRef.current) return;
+    submittingRef.current = true;
     setSubmitting(true);
     setErr(null);
+
+    // BUG-02: declare reportId here so catch block can attempt compensating delete
+    let reportId: string | undefined;
+
     try {
       const { data: rep, error: e1 } = await supabase
         .from("reports")
@@ -121,44 +170,77 @@ export default function CheckPage() {
         .select("id")
         .single();
       if (e1) throw e1;
-      const reportId = (rep as any).id as string;
+      reportId = (rep as any).id as string;
+
+      // BUG-07: resolve all photo uploads then do a single bulk INSERT
+      const itemRows: {
+        report_id: string;
+        checklist_item_id: string;
+        status: string;
+        note: string | null;
+        photo_path: string | null;
+      }[] = [];
 
       for (const it of items) {
         const ans = answers[it.id];
         let photo_path: string | null = null;
         if (ans.status === "bad" && ans.photos.length > 0) {
-          const uploaded: string[] = [];
-          for (let i = 0; i < ans.photos.length; i++) {
-            const file = ans.photos[i];
-            const ext = file.name.split(".").pop() || "jpg";
-            const path = `reports/${reportId}/${it.id}-${i}.${ext}`;
-            const { error: upErr } = await supabase.storage
-              .from(PHOTO_BUCKET)
-              .upload(path, file, { upsert: true });
-            if (upErr) throw upErr;
-            uploaded.push(path);
-          }
-          photo_path = uploaded.join("\n");
+          const uploadResults = await Promise.all(
+            ans.photos.map(async (file, i) => {
+              const ext = file.name.split(".").pop() || "jpg";
+              const path = `reports/${reportId}/${it.id}-${i}.${ext}`;
+              const { error: upErr } = await supabase.storage
+                .from(PHOTO_BUCKET)
+                .upload(path, file, { upsert: true });
+              if (upErr) throw upErr;
+              return path;
+            })
+          );
+          photo_path = uploadResults.join("\n");
         }
-        const { error: e2 } = await supabase.from("report_items").insert({
+        itemRows.push({
           report_id: reportId,
           checklist_item_id: it.id,
-          status: ans.status,
+          status: ans.status!,
           note: ans.status === "bad" ? ans.note : null,
           photo_path,
         });
-        if (e2) throw e2;
       }
+
+      // Single bulk insert — replaces N+1 per-item inserts
+      const { error: e2 } = await supabase.from("report_items").insert(itemRows);
+      if (e2) throw e2;
+
       router.replace("/rooms?done=1");
     } catch (e: any) {
-      setErr(e.message ?? String(e));
+      // BUG-02: compensating delete of the orphan reports row
+      if (typeof reportId !== "undefined") {
+        try {
+          await supabase.from("reports").delete().eq("id", reportId);
+        } catch {
+          // best-effort — ignore if delete also fails
+        }
+      }
+      // D-01: do NOT reset answers — worker keeps all their work
+      // D-02/D-03: use i18n key, not raw error message
+      setErr(t("submitError"));
+      submittingRef.current = false;
       setSubmitting(false);
     }
   }
 
   if (err) return <main><div className="card"><p style={{ color: "var(--red)" }}>Error: {err}</p></div></main>;
   if (!room) return <main><p className="muted">{t("loading")}</p></main>;
-  if (items.length === 0) return <main><div className="card"><p className="muted">{t("loading")}</p></div></main>;
+  // BUG-10: only show empty-state after load completes; before that show nothing (room guard above handles spinner)
+  if (loaded && items.length === 0) {
+    return (
+      <main>
+        <div className="card">
+          <p className="muted">No checklist items for this room type.</p>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main>
@@ -293,32 +375,40 @@ export default function CheckPage() {
                 <label className="muted" style={{ fontSize: 12, letterSpacing: 1.5, textTransform: "uppercase" }}>
                   {t("photo")}
                 </label>
+                {/* BUG-08: disabled at cap; D-05: always-visible counter */}
                 <input
                   className="input"
                   type="file"
                   accept="image/*"
                   capture="environment"
                   multiple
-                  onChange={(e) => {
-                    const files = Array.from(e.target.files ?? []);
-                    if (files.length) setDraftPhotos((prev) => [...prev, ...files]);
+                  disabled={draftPhotos.length >= MAX_PHOTOS}
+                  onChange={async (e) => {
+                    const incoming = Array.from(e.target.files ?? []);
                     e.target.value = "";
+                    if (!incoming.length) return;
+                    const remaining = MAX_PHOTOS - draftPhotos.length;
+                    if (remaining <= 0) return;
+                    const toAdd = incoming.slice(0, remaining);
+                    const resized = await Promise.all(toAdd.map(resizePhoto));
+                    setDraftPhotos((prev) => [...prev, ...resized]);
                   }}
                 />
-                {draftPhotos.length > 0 && (
-                  <div className="stack" style={{ gap: 4 }}>
-                    {draftPhotos.map((f, i) => (
-                      <div key={i} className="row-between" style={{ fontSize: 12 }}>
-                        <span className="muted" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>📷 {f.name}</span>
-                        <button
-                          type="button"
-                          onClick={() => setDraftPhotos((prev) => prev.filter((_, j) => j !== i))}
-                          style={{ background: "none", border: "none", color: "var(--red)", cursor: "pointer", fontSize: 14, padding: "0 4px" }}
-                        >×</button>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <p className="muted" style={{ fontSize: 12, margin: "4px 0 0" }}>
+                  {draftPhotos.length} / {MAX_PHOTOS} photos
+                </p>
+                <div className="stack" style={{ gap: 4 }}>
+                  {draftPhotos.map((f, i) => (
+                    <div key={i} className="row-between" style={{ fontSize: 12 }}>
+                      <span className="muted" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>📷 {f.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => setDraftPhotos((prev) => prev.filter((_, j) => j !== i))}
+                        style={{ background: "none", border: "none", color: "var(--red)", cursor: "pointer", fontSize: 14, padding: "0 4px" }}
+                      >×</button>
+                    </div>
+                  ))}
+                </div>
                 <button type="button" onClick={saveIssue} className="btn">
                   {t("save")}
                 </button>
