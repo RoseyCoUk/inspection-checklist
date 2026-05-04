@@ -26,7 +26,9 @@ Plans:
 5. Date filters on the reports page return the correct day's results regardless of the user's timezone
 6. A room type with zero checklist items shows an empty-state message, not an infinite spinner
 
-**Status:** Pending
+**Cross-cutting constraint:** Plan B and Plan C both touch `app/reports/page.tsx` (different sections). Execute sequentially or read the file fresh before each edit.
+
+**Status:** Ready to execute
 
 ---
 
