@@ -14,7 +14,7 @@
 
 Plans:
 - [x] 01-PLAN-A.md — Submission flow hardening: useRef guard, atomic submit with compensating delete, bulk insert, photo resize/cap/counter, empty-state, lang validation, i18n submitError key
-- [ ] 01-PLAN-B.md — Database schema migrations (Supabase MCP): unique index BUG-03, CHECK constraint BUG-05, composite index BUG-12, storage-delete-before-DB-row BUG-06
+- [x] 01-PLAN-B.md — Database schema migrations (Supabase MCP): unique index BUG-03, CHECK constraint BUG-05, composite index BUG-12, storage-delete-before-DB-row BUG-06
 - [ ] 01-PLAN-C.md — Reports page fixes: 200-cap notice BUG-04, dateFrom timezone fix BUG-09, floor grouping fix BUG-13
 - [ ] 01-PLAN-D.md — Foundation & tooling: next/font migration + robots noindex BUG-14, ItemCategory type widening BUG-05 (TS side)
 
@@ -28,7 +28,7 @@ Plans:
 
 **Cross-cutting constraint:** Plan B and Plan C both touch `app/reports/page.tsx` (different sections). Execute sequentially or read the file fresh before each edit.
 
-**Status:** In progress — Plan A complete (2026-05-04)
+**Status:** In progress — Plans A, B complete (2026-05-04)
 
 ---
 
