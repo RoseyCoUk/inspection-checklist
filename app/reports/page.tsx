@@ -72,7 +72,7 @@ export default function ReportsPage() {
       if (filterWorker && r.worker_name !== filterWorker) return false;
       if (filterStatus === "clean" && r.bad_count > 0) return false;
       if (filterStatus === "issues" && r.bad_count === 0) return false;
-      if (dateFrom && new Date(r.created_at) < new Date(dateFrom)) return false;
+      if (dateFrom && new Date(r.created_at) < new Date(dateFrom + "T00:00:00")) return false;
       if (dateTo && new Date(r.created_at) > new Date(dateTo + "T23:59:59")) return false;
       if ((filterCategory || filterIssue) && matchingBadCount(r) === 0) return false;
       return true;
@@ -342,6 +342,11 @@ export default function ReportsPage() {
 
       {!loading && !err && rows.length > 0 && (
         <>
+          {rows.length === 200 && (
+            <p className="muted" style={{ fontSize: 13, marginBottom: 8 }}>
+              Showing most recent 200 reports. Use filters to narrow results.
+            </p>
+          )}
           <div className="card" style={{ marginBottom: 12, padding: 14 }}>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
               <select className="input" value={filterRoom} onChange={(e) => setFilterRoom(e.target.value)}>
