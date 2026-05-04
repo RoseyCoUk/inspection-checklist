@@ -33,6 +33,7 @@ const dict = {
     cancel: "Cancel",
     submitReport: "Submit report",
     saving: "Saving…",
+    submitError: "Submission failed — please try again",
     itemsLeft: "item(s) left",
     addNotePhoto: "Add note + photo for issues",
     reportSaved: "Report saved.",
@@ -88,6 +89,7 @@ const dict = {
     cancel: "إلغاء",
     submitReport: "إرسال التقرير",
     saving: "جارٍ الحفظ…",
+    submitError: "فشل الإرسال — يرجى المحاولة مرة أخرى",
     itemsLeft: "عنصر متبقي",
     addNotePhoto: "أضف ملاحظة وصورة للمشاكل",
     reportSaved: "تم حفظ التقرير.",
@@ -166,7 +168,8 @@ export function useLang(): [Lang, (l: Lang) => void] {
   const [lang, setLangState] = useState<Lang>("en");
 
   useEffect(() => {
-    const saved = (localStorage.getItem("lang") as Lang) || "en";
+    const raw = localStorage.getItem("lang");
+    const saved: Lang = (raw === "en" || raw === "ar") ? raw : "en";
     setLangState(saved);
     document.documentElement.lang = saved;
     document.documentElement.dir = saved === "ar" ? "rtl" : "ltr";
