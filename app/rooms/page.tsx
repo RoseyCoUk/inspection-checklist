@@ -46,7 +46,12 @@ function RoomsPageInner() {
     const key = r.number.slice(0, -2);
     (grouped[key] ??= []).push(r);
   }
-  const floorKeys = Object.keys(grouped).sort();
+  const floorKeys = Object.keys(grouped).sort((a, b) => {
+    const aNum = parseInt(a, 10);
+    const bNum = parseInt(b, 10);
+    if (!isNaN(aNum) && !isNaN(bNum)) return aNum - bNum;
+    return a.localeCompare(b);
+  });
   const isVillaKey = (k: string) => k.toUpperCase() === "V";
 
   return (
