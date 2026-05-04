@@ -41,16 +41,9 @@ function RoomsPageInner() {
       });
   }, [router]);
 
-  function getFloorKey(num: string): string {
-    if (/^[Vv]/i.test(num)) return "V";
-    const digits = num.replace(/\D/g, "");
-    // Use all but the last two digits as the floor key (e.g. "101"→"1", "1001"→"10")
-    return digits.length > 2 ? digits.slice(0, -2) : digits.charAt(0);
-  }
-
   const grouped: Record<string, Room[]> = {};
   for (const r of rooms) {
-    const key = getFloorKey(r.number);
+    const key = r.number.charAt(0);
     (grouped[key] ??= []).push(r);
   }
   const floorKeys = Object.keys(grouped).sort();
