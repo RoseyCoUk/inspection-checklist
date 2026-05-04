@@ -43,7 +43,7 @@ function RoomsPageInner() {
 
   const grouped: Record<string, Room[]> = {};
   for (const r of rooms) {
-    const key = r.number.charAt(0);
+    const key = r.number.slice(0, -2);
     (grouped[key] ??= []).push(r);
   }
   const floorKeys = Object.keys(grouped).sort();
