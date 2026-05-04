@@ -39,6 +39,19 @@ create table if not exists report_items (
 create index if not exists reports_created_idx on reports (created_at desc);
 create index if not exists report_items_report_idx on report_items (report_id);
 
+-- BUG-03: Unique index prevents duplicate report_items from double-submit races
+create unique index if not exists report_items_report_item_uniq
+  on report_items (report_id, checklist_item_id);
+
+-- BUG-05: CHECK constraint enforces valid category values across TS, SQL, and UI
+alter table checklist_items
+  add constraint checklist_items_category_check
+  check (category in ('paint','wallpaper','aluminum','hk','mechanical','plumbing','electrical','furniture','cleaning','other'));
+
+-- BUG-12: Composite index for hot-path "latest report per room" query
+create index if not exists reports_room_created_idx
+  on reports (room_id, created_at desc);
+
 -- Storage bucket: create manually in Supabase dashboard
 --   name: checklist-photos
 --   public: true
