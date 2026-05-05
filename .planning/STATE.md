@@ -13,7 +13,7 @@
 
 ## Active Work
 
-**Phase 2: Auth & Row-Level Security** — pending start.
+**Phase 2: Auth & Row-Level Security** — context captured, ready to plan.
 
 ## Completed Plans
 
@@ -48,6 +48,6 @@
 
 ## Last Session
 
-**Timestamp:** 2026-05-04T08:08:00Z
-**Stopped at:** Completed 01-D plan (Plan D — Font migration, robots noindex, ItemCategory union widening). Phase 1 complete.
-**Resume file:** None
+**Timestamp:** 2026-05-04
+**Stopped at:** Phase 2 context gathered via discuss-phase.
+**Resume file:** .planning/phases/02-auth-row-level-security/02-CONTEXT.md
