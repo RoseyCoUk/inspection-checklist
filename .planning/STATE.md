@@ -8,12 +8,12 @@
 | Phase | Name | Status | Plans |
 |-------|------|--------|-------|
 | 1 | Bug Fixes & Code Quality | Complete | 4 |
-| 2 | Auth & Row-Level Security | Pending | — |
+| 2 | Auth & Row-Level Security | Ready to execute | 4 |
 | 3 | Storage Hardening | Pending | — |
 
 ## Active Work
 
-**Phase 2: Auth & Row-Level Security** — context captured, ready to plan.
+**Phase 2: Auth & Row-Level Security** — 4 plans ready to execute (Wave 1: A, B, D in parallel; Wave 2: C).
 
 ## Completed Plans
 
@@ -49,5 +49,5 @@
 ## Last Session
 
 **Timestamp:** 2026-05-04
-**Stopped at:** Phase 2 context gathered via discuss-phase.
-**Resume file:** .planning/phases/02-auth-row-level-security/02-CONTEXT.md
+**Stopped at:** Phase 2 planning complete — 4 plans created (A, B, C, D).
+**Resume file:** .planning/phases/02-auth-row-level-security/02-PLAN-A.md
