@@ -1,7 +1,7 @@
 # Project State — inspection-checklist Fix Pass
 
 **Current phase:** 3
-**Last updated:** 2026-05-04
+**Last updated:** 2026-05-05
 
 ## Phase Status
 
@@ -9,11 +9,11 @@
 |-------|------|--------|-------|
 | 1 | Bug Fixes & Code Quality | Complete | 4 |
 | 2 | Auth & Row-Level Security | Complete | 4 |
-| 3 | Storage Hardening | Pending | — |
+| 3 | Storage Hardening | Complete | 3 |
 
 ## Active Work
 
-**Phase 3: Storage Hardening** — planned, ready to execute. 3 plans in 2 waves.
+**All phases complete.** Phase 3: Storage Hardening executed 2026-05-05. Production deployment pending — see PRODUCTION-DEPLOY.md.
 
 ## Completed Plans
 
@@ -48,6 +48,5 @@
 
 ## Last Session
 
-**Timestamp:** 2026-05-04
-**Stopped at:** Phase 2 complete — all 4 plans executed. RLS on test project only; production deferred. See PRODUCTION-DEPLOY.md.
-**Resume file:** .planning/phases/03-storage-hardening/ (Phase 3 not yet planned)
+**Timestamp:** 2026-05-05
+**Stopped at:** Phase 3 complete — all 3 plans executed. Storage hardened on test project. Production deployment pending — see PRODUCTION-DEPLOY.md.

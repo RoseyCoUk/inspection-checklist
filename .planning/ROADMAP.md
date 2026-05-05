@@ -72,9 +72,9 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
-- [ ] 03-01-PLAN.md — Bucket privacy + storage policy cleanup (STG-01): make checklist-photos private, drop anon SELECT/DELETE policies, document in PRODUCTION-DEPLOY.md
-- [ ] 03-02-PLAN.md — Export route handler + ReportsClient gap fix (STG-03, STG-04): create GET /api/export with signed URLs, replace fetchAllDetailed and all getPublicUrl calls in ReportsClient
-- [ ] 03-03-PLAN.md — Report detail signed URL render (STG-02): generate signedUrlMap server-side in reports/[id]/page.tsx, update ReportDetailClient to use signedUrlMap prop for photo render, CSV, and PDF
+- [x] 03-01-PLAN.md — Bucket privacy + storage policy cleanup (STG-01): make checklist-photos private, drop anon SELECT/DELETE policies, document in PRODUCTION-DEPLOY.md
+- [x] 03-02-PLAN.md — Export route handler + ReportsClient gap fix (STG-03, STG-04): create GET /api/export with signed URLs, replace fetchAllDetailed and all getPublicUrl calls in ReportsClient
+- [x] 03-03-PLAN.md — Report detail signed URL render (STG-02): generate signedUrlMap server-side in reports/[id]/page.tsx, update ReportDetailClient to use signedUrlMap prop for photo render, CSV, and PDF
 
 **Wave structure:**
 - Wave 1 (parallel): Plan 01 (bucket policy — DB only), Plan 02 (export route + ReportsClient)
@@ -86,7 +86,7 @@ Plans:
 3. PDF exports include photos loaded via signed URLs with no CORS failures
 4. Signed URLs in the app expire within 1 hour
 
-**Status:** Pending — planned 2026-05-05
+**Status:** Complete — all 3 plans done (2026-05-05)
 
 ---
 
