@@ -38,11 +38,23 @@ Plans:
 
 **Requirements:** SEC-01 through SEC-04
 
+**Plans:** 4 plans
+
+Plans:
+- [ ] 02-PLAN-A.md — Auth foundation: install jose, lib/session.ts (JWT cookie helpers), app/actions/auth.ts (loginAction), proxy.ts (route gate), lib/supabase.ts createServiceClient()
+- [ ] 02-PLAN-B.md — Login page: app/login/page.tsx with password-only form, useActionState wiring, inline error display
+- [ ] 02-PLAN-C.md — Reports server-component conversion: reports/page.tsx and reports/[id]/page.tsx to async server components, ReportsClient.tsx client component, deleteReportAction server action
+- [ ] 02-PLAN-D.md — RLS database policies: enable RLS on all 5 tables, anon-select on rooms/room_types/checklist_items, anon-insert-only on reports/report_items, via Supabase MCP
+
+**Wave structure:**
+- Wave 1 (parallel): Plan A (auth foundation), Plan B (login page), Plan D (RLS — DB only)
+- Wave 2 (after A): Plan C (reports conversion — depends on createServiceClient and session helpers)
+
 **Success criteria:**
 1. `curl https://resort-checklist.vercel.app/reports` returns a redirect to login, not HTTP 200
 2. An unauthenticated request cannot delete a report — no client-side delete path exists
 3. A direct Supabase query with the anon key cannot read `reports` or `report_items` rows
-4. A manager can log in via magic link email and access `/reports` within 60 seconds
+4. A manager can log in via the shared password and access `/reports`
 5. Worker submission (anon insert) still works after RLS is enabled
 
 **Status:** Pending
