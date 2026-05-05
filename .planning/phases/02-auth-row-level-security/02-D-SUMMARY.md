@@ -57,7 +57,7 @@ completed: 2026-05-04
 - **Duration:** 8 min
 - **Started:** 2026-05-04T00:00:00Z
 - **Completed:** 2026-05-04T00:08:00Z
-- **Tasks:** 1 auto (D-1 complete); D-2 checkpoint awaiting human verification
+- **Tasks:** 1 auto (D-1 complete); D-2 checkpoint approved
 - **Files modified:** 0 (database-only changes)
 
 ## Accomplishments
@@ -84,11 +84,23 @@ None — all changes are database-level (Postgres RLS policies). No application 
 
 - Used Supabase CLI (`npx supabase db query --linked`) for all DDL statements — equivalent to MCP tool pattern from Phase 1 Plan B
 - Applied each SQL statement individually to isolate errors (as required by plan)
-- Production project `quuqxbvzxgaatbfuvyum` (inspection-checklist) targeted — local `.env.local` points to test project; CLI linked project is production
+- Production project `quuqxbvzxgaatbfuvyum` (inspection-checklist) targeted during D-1 — local `.env.local` points to test project; CLI linked project was production at time of execution
 
 ## Deviations from Plan
 
-None — plan executed exactly as written. The plan noted that the Supabase CLI fallback is equivalent to the MCP tool approach used in Phase 1 Plan B.
+### Project Targeting Correction (Post-Checkpoint, Orchestrator-Resolved)
+
+**Found during:** Post D-2 checkpoint review
+
+**Issue:** RLS policies were initially applied to the production project (`quuqxbvzxgaatbfuvyum`) during D-1 instead of the test project (`cnqotgwqqxiqforchuux`). The CLI linked project at time of execution was production.
+
+**Fix applied by orchestrator (not re-executed here):** RLS policies were moved to the test project (`cnqotgwqqxiqforchuux`). Production RLS was disabled.
+
+**Corrected state:**
+- Test project `cnqotgwqqxiqforchuux`: RLS ENABLED with all 5 policies — correct for development validation
+- Production project `quuqxbvzxgaatbfuvyum`: RLS DISABLED — intentional; to be applied at go-live per `.planning/PRODUCTION-DEPLOY.md`
+
+NOTE: RLS was initially applied to the production project (quuqxbvzxgaatbfuvyum) but was moved to the test project (cnqotgwqqxiqforchuux). Production has RLS disabled — to be applied at go-live per .planning/PRODUCTION-DEPLOY.md.
 
 ## Known Stubs
 
