@@ -103,7 +103,7 @@ export default function ReportsClient({ initialRows }: { initialRows: ReportRow[
     return true;
   };
 
-  // STG-03/STG-04: Replaces broken fetchAllDetailed() (anon client, blocked by RLS).
+  // STG-03/STG-04: Replaces the prior anon-client export function (blocked by RLS).
   // Calls authenticated route handler that returns report data + pre-signed photo URLs.
   async function fetchExportData(): Promise<{ reports: any[]; signedUrlMap: Record<string, string> }> {
     const ids = filtered.map((r) => r.id);
