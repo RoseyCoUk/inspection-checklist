@@ -1,6 +1,6 @@
 # Project State — inspection-checklist Fix Pass
 
-**Current phase:** 1
+**Current phase:** 3
 **Last updated:** 2026-05-04
 
 ## Phase Status
@@ -8,12 +8,12 @@
 | Phase | Name | Status | Plans |
 |-------|------|--------|-------|
 | 1 | Bug Fixes & Code Quality | Complete | 4 |
-| 2 | Auth & Row-Level Security | Ready to execute | 4 |
+| 2 | Auth & Row-Level Security | Complete | 4 |
 | 3 | Storage Hardening | Pending | — |
 
 ## Active Work
 
-**Phase 2: Auth & Row-Level Security** — 4 plans ready to execute (Wave 1: A, B, D in parallel; Wave 2: C).
+**Phase 3: Storage Hardening** — pending. Phase 2 complete.
 
 ## Completed Plans
 
@@ -49,5 +49,5 @@
 ## Last Session
 
 **Timestamp:** 2026-05-04
-**Stopped at:** Phase 2 planning complete — 4 plans created (A, B, C, D).
-**Resume file:** .planning/phases/02-auth-row-level-security/02-PLAN-A.md
+**Stopped at:** Phase 2 complete — all 4 plans executed. RLS on test project only; production deferred. See PRODUCTION-DEPLOY.md.
+**Resume file:** .planning/phases/03-storage-hardening/ (Phase 3 not yet planned)

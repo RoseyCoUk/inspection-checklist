@@ -41,10 +41,10 @@ Plans:
 **Plans:** 4 plans
 
 Plans:
-- [ ] 02-PLAN-A.md — Auth foundation: install jose, lib/session.ts (JWT cookie helpers), app/actions/auth.ts (loginAction), proxy.ts (route gate), lib/supabase.ts createServiceClient()
-- [ ] 02-PLAN-B.md — Login page: app/login/page.tsx with password-only form, useActionState wiring, inline error display
-- [ ] 02-PLAN-C.md — Reports server-component conversion: reports/page.tsx and reports/[id]/page.tsx to async server components, ReportsClient.tsx client component, deleteReportAction server action
-- [ ] 02-PLAN-D.md — RLS database policies: enable RLS on all 5 tables, anon-select on rooms/room_types/checklist_items, anon-insert-only on reports/report_items, via Supabase MCP
+- [x] 02-PLAN-A.md — Auth foundation: install jose, lib/session.ts (JWT cookie helpers), app/actions/auth.ts (loginAction), proxy.ts (route gate), lib/supabase.ts createServiceClient()
+- [x] 02-PLAN-B.md — Login page: app/login/page.tsx with password-only form, useActionState wiring, inline error display
+- [x] 02-PLAN-C.md — Reports server-component conversion: reports/page.tsx and reports/[id]/page.tsx to async server components, ReportsClient.tsx client component, deleteReportAction server action
+- [x] 02-PLAN-D.md — RLS database policies: enable RLS on all 5 tables (test project only; production deferred to PRODUCTION-DEPLOY.md)
 
 **Wave structure:**
 - Wave 1 (parallel): Plan A (auth foundation), Plan B (login page), Plan D (RLS — DB only)
@@ -57,7 +57,7 @@ Plans:
 4. A manager can log in via the shared password and access `/reports`
 5. Worker submission (anon insert) still works after RLS is enabled
 
-**Status:** Pending
+**Status:** Complete — all 4 plans done (2026-05-04)
 
 ---
 
