@@ -69,13 +69,24 @@ Plans:
 
 **Dependencies:** Phase 2 (auth session needed to call `createSignedUrl` on private bucket)
 
+**Plans:** 3 plans
+
+Plans:
+- [ ] 03-01-PLAN.md — Bucket privacy + storage policy cleanup (STG-01): make checklist-photos private, drop anon SELECT/DELETE policies, document in PRODUCTION-DEPLOY.md
+- [ ] 03-02-PLAN.md — Export route handler + ReportsClient gap fix (STG-03, STG-04): create GET /api/export with signed URLs, replace fetchAllDetailed and all getPublicUrl calls in ReportsClient
+- [ ] 03-03-PLAN.md — Report detail signed URL render (STG-02): generate signedUrlMap server-side in reports/[id]/page.tsx, update ReportDetailClient to use signedUrlMap prop for photo render, CSV, and PDF
+
+**Wave structure:**
+- Wave 1 (parallel): Plan 01 (bucket policy — DB only), Plan 02 (export route + ReportsClient)
+- Wave 2 (after 01 + 02): Plan 03 (report detail page — depends on private bucket being in place)
+
 **Success criteria:**
 1. Direct object URLs for `checklist-photos` return 403 — bucket is not public
 2. Photos render correctly in the check page, report detail, and reports list
 3. PDF exports include photos loaded via signed URLs with no CORS failures
 4. Signed URLs in the app expire within 1 hour
 
-**Status:** Pending
+**Status:** Pending — planned 2026-05-05
 
 ---
 
