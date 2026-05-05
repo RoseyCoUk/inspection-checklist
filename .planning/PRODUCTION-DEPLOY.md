@@ -107,6 +107,55 @@ ALTER TABLE report_items DISABLE ROW LEVEL SECURITY;
 
 ---
 
+## Phase 3: Storage Hardening
+
+### DB-02 — Make checklist-photos bucket private + remove anon SELECT/DELETE policies
+
+**Status:** ✅ Test | ⏳ Production
+**Phase:** 03
+**Requirement:** STG-01
+**Applied to test:** 2026-05-04
+
+**Purpose:** Make the checklist-photos bucket private so direct object URLs return 403. Remove the anon SELECT and DELETE storage policies — neither is valid for a private bucket. The anon INSERT policy is kept for worker photo uploads.
+
+**SQL to apply to production when ready:**
+
+```sql
+-- 1. Make bucket private (direct URLs return 403)
+UPDATE storage.buckets SET public = false WHERE id = 'checklist-photos';
+
+-- 2. Remove anon SELECT — "anyone can view photos"
+DROP POLICY IF EXISTS "anyone can view photos" ON storage.objects;
+
+-- 3. Remove anon DELETE — "anon can delete photos"
+-- (deleteReportAction uses service role; workers should not delete photos)
+DROP POLICY IF EXISTS "anon can delete photos" ON storage.objects;
+
+-- NOTE: Keep "anon can upload photos" (INSERT) — worker uploads use anon key
+```
+
+**Verification query (run after applying):**
+```sql
+SELECT id, public FROM storage.buckets WHERE id = 'checklist-photos';
+-- Expected: public = false
+
+SELECT policyname, cmd FROM pg_policies
+WHERE tablename = 'objects' AND schemaname = 'storage'
+ORDER BY policyname;
+-- Expected: only "anon can upload photos" (INSERT) remains
+```
+
+**Rollback if needed:**
+```sql
+UPDATE storage.buckets SET public = true WHERE id = 'checklist-photos';
+CREATE POLICY "anyone can view photos" ON storage.objects
+  FOR SELECT TO anon USING (bucket_id = 'checklist-photos');
+CREATE POLICY "anon can delete photos" ON storage.objects
+  FOR DELETE TO anon USING (bucket_id = 'checklist-photos');
+```
+
+---
+
 ## Environment Variables Required on Production (Vercel)
 
 These must be added to Vercel before deploying Phase 2 code:
