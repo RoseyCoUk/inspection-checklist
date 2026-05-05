@@ -13,7 +13,7 @@
 
 ## Active Work
 
-**Phase 3: Storage Hardening** — pending. Phase 2 complete.
+**Phase 3: Storage Hardening** — planned, ready to execute. 3 plans in 2 waves.
 
 ## Completed Plans
 
