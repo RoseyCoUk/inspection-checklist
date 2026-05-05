@@ -1,6 +1,5 @@
 "use client";
 import Link from "next/link";
-import { supabase, PHOTO_BUCKET } from "@/lib/supabase";
 
 type Detail = {
   id: string;
@@ -16,7 +15,13 @@ type Detail = {
   }[];
 };
 
-export default function ReportDetailClient({ rep }: { rep: Detail }) {
+export default function ReportDetailClient({
+  rep,
+  signedUrlMap,
+}: {
+  rep: Detail;
+  signedUrlMap: Record<string, string>;
+}) {
   const bad = rep.report_items.filter((i) => i.status === "bad");
   const good = rep.report_items.filter((i) => i.status === "good");
 
@@ -39,7 +44,7 @@ export default function ReportDetailClient({ rep }: { rep: Detail }) {
         it.status,
         it.note ?? "",
         photoPathsFor(it.photo_path)
-          .map((p) => supabase.storage.from(PHOTO_BUCKET).getPublicUrl(p).data.publicUrl)
+          .map((p) => signedUrlMap[p] ?? "")
           .join(" | "),
       ]),
     ];
@@ -126,7 +131,7 @@ export default function ReportDetailClient({ rep }: { rep: Detail }) {
         }
 
         for (const p of photoPathsFor(it.photo_path)) {
-          const url = supabase.storage.from(PHOTO_BUCKET).getPublicUrl(p).data.publicUrl;
+          const url = signedUrlMap[p] ?? "";
           const img = await loadImg(url);
           if (img) {
             const maxW = pageW - margin * 2 - 12;
@@ -170,7 +175,7 @@ export default function ReportDetailClient({ rep }: { rep: Detail }) {
           <div className="stack" style={{ marginBottom: 24 }}>
             {bad.map((it) => {
               const photoUrls = photoPathsFor(it.photo_path).map(
-                (p) => supabase.storage.from(PHOTO_BUCKET).getPublicUrl(p).data.publicUrl
+                (p) => signedUrlMap[p] ?? ""
               );
               return (
                 <div key={it.id} className="card" style={{ borderLeft: "3px solid var(--red)" }}>
