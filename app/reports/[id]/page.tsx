@@ -1,4 +1,4 @@
-import { createServiceClient } from "@/lib/supabase";
+import { createServiceClient, PHOTO_BUCKET } from "@/lib/supabase";
 import ReportDetailClient from "./ReportDetailClient";
 
 type Detail = {
@@ -41,5 +41,31 @@ export default async function ReportDetailPage({
     );
   }
 
-  return <ReportDetailClient rep={data as unknown as Detail} />;
+  // STG-02: Collect all photo paths and batch-generate signed URLs (1-hour TTL)
+  // Service role bypasses storage RLS — no storage SELECT policy needed
+  const allPaths: string[] = [];
+  for (const item of (data.report_items as any[]) ?? []) {
+    if (item.photo_path) {
+      allPaths.push(
+        ...String(item.photo_path)
+          .split(/\r?\n/)
+          .map((s: string) => s.trim())
+          .filter(Boolean)
+      );
+    }
+  }
+
+  const signedUrlMap: Record<string, string> = {};
+  if (allPaths.length > 0) {
+    const { data: signed } = await db.storage
+      .from(PHOTO_BUCKET)
+      .createSignedUrls(allPaths, 3600);
+    for (const item of signed ?? []) {
+      if (item.signedUrl && item.path) {
+        signedUrlMap[item.path] = item.signedUrl;
+      }
+    }
+  }
+
+  return <ReportDetailClient rep={data as unknown as Detail} signedUrlMap={signedUrlMap} />;
 }
