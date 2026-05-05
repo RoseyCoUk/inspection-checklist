@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { supabase, PHOTO_BUCKET } from "@/lib/supabase";
+import { PHOTO_BUCKET } from "@/lib/supabase";
 import { useT } from "@/lib/i18n";
 import LangToggle from "../LangToggle";
 import { deleteReportAction } from "@/app/actions/delete-report";
@@ -103,27 +103,21 @@ export default function ReportsClient({ initialRows }: { initialRows: ReportRow[
     return true;
   };
 
-  // NOTE: fetchAllDetailed uses the public anon supabase client. After Plan D applies RLS
-  // (anon key cannot read reports), CSV/PDF export will fail. This is a known gap —
-  // Plan D must address export functionality or a gap closure plan is required.
-  async function fetchAllDetailed() {
+  // STG-03/STG-04: Replaces broken fetchAllDetailed() (anon client, blocked by RLS).
+  // Calls authenticated route handler that returns report data + pre-signed photo URLs.
+  async function fetchExportData(): Promise<{ reports: any[]; signedUrlMap: Record<string, string> }> {
     const ids = filtered.map((r) => r.id);
-    if (ids.length === 0) return [];
-    const { data, error } = await supabase
-      .from("reports")
-      .select("id, worker_name, created_at, rooms(number), report_items(id, status, note, photo_path, checklist_items(label, category))")
-      .in("id", ids)
-      .order("created_at", { ascending: false });
-    if (error) throw error;
-    const order = new Map(ids.map((id, i) => [id, i]));
-    return ((data ?? []) as any[]).sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
+    if (ids.length === 0) return { reports: [], signedUrlMap: {} };
+    const res = await fetch(`/api/export?ids=${ids.join(",")}`);
+    if (!res.ok) throw new Error(`Export fetch failed: ${res.status}`);
+    return res.json();
   }
 
   async function exportAllCsv() {
     setExporting("csv");
     setProgress(0);
     try {
-      const reports = await fetchAllDetailed();
+      const { reports, signedUrlMap } = await fetchExportData();
       setProgress(0.15);
       const esc = (v: string) => `"${(v ?? "").replace(/"/g, '""')}"`;
       const header = ["Date", "Room", "Worker", "Item", "Category", "Status", "Note", "Photos"];
@@ -143,7 +137,7 @@ export default function ReportsClient({ initialRows }: { initialRows: ReportRow[
             it.status,
             it.note ?? "",
             photoPathsFor(it.photo_path)
-              .map((p) => supabase.storage.from(PHOTO_BUCKET).getPublicUrl(p).data.publicUrl)
+              .map((p) => signedUrlMap[p] ?? "")
               .join(" | "),
           ]);
         }
@@ -171,7 +165,7 @@ export default function ReportsClient({ initialRows }: { initialRows: ReportRow[
     setExporting("pdf");
     setProgress(0);
     try {
-      const reports = await fetchAllDetailed();
+      const { reports, signedUrlMap } = await fetchExportData();
       setProgress(0.05);
       const { jsPDF } = await import("jspdf");
       const doc = new jsPDF({ unit: "pt", format: "a4" });
@@ -262,7 +256,7 @@ export default function ReportsClient({ initialRows }: { initialRows: ReportRow[
               y += noteLines.length * 13 + 4;
             }
             for (const p of photoPathsFor(it.photo_path)) {
-              const url = supabase.storage.from(PHOTO_BUCKET).getPublicUrl(p).data.publicUrl;
+              const url = signedUrlMap[p] ?? "";
               const img = await loadImg(url);
               tick();
               if (img) {
