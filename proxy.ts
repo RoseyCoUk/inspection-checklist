@@ -8,8 +8,9 @@ import { verifySession } from "@/lib/session";
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Only gate /reports and /reports/* (D-07)
-  if (!pathname.startsWith("/reports")) {
+  // Gate the whole app — only /login is public
+  const isPublic = pathname.startsWith("/login");
+  if (isPublic) {
     return NextResponse.next();
   }
 
@@ -55,7 +56,9 @@ export async function proxy(request: NextRequest) {
   return response;
 }
 
-// Only run proxy on /reports/* — skip static assets, API routes, etc.
+// Gate all app routes except /login — skip static assets and API routes automatically.
 export const config = {
-  matcher: ["/reports/:path*"],
+  matcher: [
+    "/((?!login|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js)).*)",
+  ],
 };

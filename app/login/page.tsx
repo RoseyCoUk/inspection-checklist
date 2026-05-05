@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 import { useActionState } from "react";
 import { useSearchParams } from "next/navigation";
 import { loginAction, type LoginState } from "@/app/actions/auth";
@@ -12,6 +12,7 @@ function LoginForm() {
     loginAction,
     undefined
   );
+  const [showPassword, setShowPassword] = useState(false);
 
   return (
     <main>
@@ -36,16 +37,36 @@ function LoginForm() {
             >
               Password
             </label>
-            {/* D-04: single password field, no username */}
-            <input
-              id="password"
-              className="input"
-              type="password"
-              name="password"
-              autoComplete="current-password"
-              required
-              style={{ width: "100%" }}
-            />
+            <div style={{ position: "relative" }}>
+              <input
+                id="password"
+                className="input"
+                type={showPassword ? "text" : "password"}
+                name="password"
+                autoComplete="current-password"
+                required
+                style={{ width: "100%", paddingRight: 64 }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                style={{
+                  position: "absolute",
+                  right: 10,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  fontSize: 12,
+                  color: "var(--brown)",
+                  fontWeight: 600,
+                  padding: "2px 4px",
+                }}
+              >
+                {showPassword ? "Hide" : "Show"}
+              </button>
+            </div>
           </div>
 
           {/* D-05: Inline error — shown only on failure */}
