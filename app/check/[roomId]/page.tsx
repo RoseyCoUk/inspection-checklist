@@ -161,16 +161,14 @@ export default function CheckPage() {
     setErr(null);
 
     // BUG-02: declare reportId here so catch block can attempt compensating delete
-    let reportId: string | undefined;
+    // Generate UUID client-side — avoids .select("id") which requires anon SELECT on reports (blocked by RLS)
+    const reportId: string = crypto.randomUUID();
 
     try {
-      const { data: rep, error: e1 } = await supabase
+      const { error: e1 } = await supabase
         .from("reports")
-        .insert({ room_id: roomId, worker_name: worker })
-        .select("id")
-        .single();
+        .insert({ id: reportId, room_id: roomId, worker_name: worker });
       if (e1) throw e1;
-      reportId = (rep as any).id as string;
 
       // BUG-07: resolve all photo uploads then do a single bulk INSERT
       const itemRows: {
@@ -191,7 +189,7 @@ export default function CheckPage() {
               const path = `reports/${reportId}/${it.id}-${i}.${ext}`;
               const { error: upErr } = await supabase.storage
                 .from(PHOTO_BUCKET)
-                .upload(path, file, { upsert: true });
+                .upload(path, file);
               if (upErr) throw upErr;
               return path;
             })
@@ -213,13 +211,12 @@ export default function CheckPage() {
 
       router.replace("/rooms?done=1");
     } catch (e: any) {
-      // BUG-02: compensating delete of the orphan reports row
-      if (typeof reportId !== "undefined") {
-        try {
-          await supabase.from("reports").delete().eq("id", reportId);
-        } catch {
-          // best-effort — ignore if delete also fails
-        }
+      console.error("[submit error]", e);
+      // BUG-02: compensating delete of the orphan reports row (best-effort, may fail if RLS blocks anon DELETE)
+      try {
+        await supabase.from("reports").delete().eq("id", reportId);
+      } catch {
+        // best-effort — ignore if delete also fails
       }
       // D-01: do NOT reset answers — worker keeps all their work
       // D-02/D-03: use i18n key, not raw error message
